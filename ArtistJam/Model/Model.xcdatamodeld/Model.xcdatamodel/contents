@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model userDefinedModelVersionIdentifier="" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="8193.2" systemVersion="14F27" minimumToolsVersion="Xcode 7.0">
+    <entity name="Artist" representedClassName=".Artist" syncable="YES">
+        <attribute name="avatar" optional="YES" attributeType="Binary" valueTransformerName="ArtistJam.ImageTransformer" allowsExternalBinaryDataStorage="YES" syncable="YES"/>
+        <attribute name="details" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="followers" optional="YES" attributeType="Integer 32" defaultValueString="0" syncable="YES"/>
+        <attribute name="role" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="username" optional="YES" attributeType="String" syncable="YES"/>
+        <relationship name="post" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Post" inverseName="artist" inverseEntity="Post" syncable="YES"/>
+    </entity>
+    <entity name="Event" representedClassName=".Event" parentEntity="Post" syncable="YES">
+        <attribute name="date" optional="YES" attributeType="Date" syncable="YES"/>
+        <attribute name="latitude" optional="YES" attributeType="Double" defaultValueString="0.0" syncable="YES"/>
+        <attribute name="longitude" optional="YES" attributeType="Double" defaultValueString="0.0" syncable="YES"/>
+    </entity>
+    <entity name="Image" representedClassName=".Image" syncable="YES">
+        <attribute name="imageData" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES" syncable="YES"/>
+        <attribute name="thumbnailData" optional="YES" attributeType="Binary" allowsExternalBinaryDataStorage="YES" syncable="YES"/>
+        <relationship name="post" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Post" inverseName="imageData" inverseEntity="Post" syncable="YES"/>
+    </entity>
+    <entity name="News" representedClassName=".News" parentEntity="Post" syncable="YES">
+        <attribute name="date" optional="YES" attributeType="Date" syncable="YES"/>
+        <attribute name="liked" optional="YES" attributeType="Boolean" syncable="YES"/>
+        <attribute name="likes" optional="YES" attributeType="Integer 32" defaultValueString="0" syncable="YES"/>
+    </entity>
+    <entity name="Post" representedClassName=".Post" isAbstract="YES" syncable="YES">
+        <attribute name="details" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="imageLink" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="title" optional="YES" attributeType="String" indexed="YES" syncable="YES"/>
+        <attribute name="webID" optional="YES" attributeType="Integer 32" defaultValueString="0" syncable="YES"/>
+        <relationship name="artist" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Artist" inverseName="post" inverseEntity="Artist" syncable="YES"/>
+        <relationship name="imageData" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Image" inverseName="post" inverseEntity="Image" syncable="YES"/>
+    </entity>
+    <elements>
+        <element name="Artist" positionX="-63" positionY="-18" width="128" height="133"/>
+        <element name="Event" positionX="259" positionY="116" width="128" height="90"/>
+        <element name="Image" positionX="153" positionY="-135" width="128" height="88"/>
+        <element name="News" positionX="459" positionY="117" width="128" height="88"/>
+        <element name="Post" positionX="358" positionY="-99" width="128" height="135"/>
+    </elements>
+</model>
