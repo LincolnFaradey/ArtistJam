@@ -83,4 +83,19 @@ class PostUploadOperation: Operation {
         print("dict: \(dictionary)")
         return NSDictionary(dictionary: dictionary)
     }
+    
+    func createPostEventRequest(route route: String, json: NSDictionary) -> NSURLRequest? {
+        let loginURL = NSURL(string: ADDRESS + "/" + route)
+        let request = NSMutableURLRequest(URL: loginURL!, cachePolicy: NSURLRequestCachePolicy.UseProtocolCachePolicy, timeoutInterval: 60)
+        request.HTTPMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        
+        do {
+            request.HTTPBody = try NSJSONSerialization.dataWithJSONObject(json, options: NSJSONWritingOptions.PrettyPrinted)
+            return request
+        } catch let error as NSError {
+            print("cannot serialize: \(error.userInfo)")
+            return nil
+        }
+    }
 }

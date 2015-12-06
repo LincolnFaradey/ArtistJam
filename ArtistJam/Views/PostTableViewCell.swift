@@ -73,37 +73,31 @@ class PostTableViewCell: UITableViewCell {
 
 extension PostTableViewCell {
     
-    func loadImageFor(postEntity post: Post, atCoreDataStack stack: CoreDataStack) -> (loader: DownloadOperation, filter: ImageFilterOperation) {
-        
+    func imageOperations(postEntity post: Post, coreDataStack: CoreDataStack) -> (loader: DownloadOperation, filter: ImageFilterOperation) {
         self.loading = true
         let loader = DownloadOperation(imageLink: post.imageLink!)
-
         let imageFilter = ImageFilterOperation()
         
         loader.completionBlock = {
             print("loaded")
             imageFilter.image = loader.downloadedImage!
         }
-        
 
         imageFilter.completionBlock = {
-            dispatch_async(dispatch_get_main_queue(), {
-                post.imageData?.imageDataWith(loader.downloadedImage!)
-                post.imageData?.thumbnailDataWith(imageFilter.outImage!)
-                
-                stack.saveContext()
-                
-                if let _ = post.imageData?.image() {
-                    print("image exist")
-                    self.loading = false
-                }else {
-                    print("no it doesn't")
+            post.imageData?.imageDataWith(loader.downloadedImage)
+            post.imageData?.thumbnailDataWith(imageFilter.outImage)
+            BackgroundDataWorker.sharedManager.saveContext()
+            
+            dispatch_async(dispatch_get_main_queue(), {[unowned self] in
+                if let img = post.imageData?.thumbnailImage() {
+                    self.stageImageView.image = img
                 }
-                
-                self.stageImageView.image = post.imageData?.thumbnailImage()
-                
+                self.loading = false
             })
         }
+        
+        loader.cancellationBlock = { [unowned self] in self.loading = false }
+        imageFilter.cancellationBlock = { [unowned self] in self.loading = false }
         
         return (loader, imageFilter)
     }

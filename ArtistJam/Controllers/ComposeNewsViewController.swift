@@ -112,21 +112,21 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
     }
     
     func addNews() -> Post {
-        let news = NSEntityDescription.insertNewObjectForEntityForName("News", inManagedObjectContext: coreDataStack.context) as! News
-        let image = NSEntityDescription.insertNewObjectForEntityForName("Image", inManagedObjectContext: coreDataStack.context) as! Image
-        image.imageDataWith(self.image!)
-        image.imageDataWith(self.image!.thumbnailWithSize(CGSizeMake(200, 200)))
-        
         let username = NSUserDefaults.standardUserDefaults().valueForKey("username") as! String
-        let artist = findOrCreateArtist(username, context: self.coreDataStack.context)
-        
-        news.artist = artist
-        news.title = titleTextField.text
-        news.details = descriptionTextView.text
-        news.imageLink = fileLink()
-        news.imageData = image
-        
-        self.coreDataStack.saveContext()
+        let title = titleTextField.text
+        let details = descriptionTextView.text
+        let imageLink = fileLink()
+
+        let postDic = [
+            "username": username,
+            "title": title,
+            "description": details,
+            "image_link": imageLink
+        ]
+
+        let news = BackgroundDataWorker.sharedManager.save(postDic, type: .News) as! News
+        news.imageData?.imageDataWith(self.image!)
+//        news.imageData?.thumbnailDataWith(self.image!)
         
         return news
     }
@@ -139,7 +139,7 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
         let news = addNews()
         print("id: \(news.objectID)")
         
-        let AWSUploadOperation = UploadOperation(data: UIImagePNGRepresentation(self.image!.thumbnailWithSize(CGSizeMake(600, 600)))!, link: fileLink())
+        let AWSUploadOperation = UploadOperation(image: self.image!, link: fileLink())
         let postUpload = PostUploadOperation(post: news)
         postUpload.addDependency(AWSUploadOperation)
         

@@ -7,6 +7,7 @@
 //
 
 typealias progressBlock = (Int8) -> ()
+typealias operationBlock = () -> ()
 
 class Operation: NSOperation {
     enum State: String {
@@ -26,6 +27,8 @@ class Operation: NSOperation {
             didChangeValueForKey(state.rawValue)
         }
     }
+    
+    var cancellationBlock = operationBlock?()
     
     // MARK: - NSOperation
     override var ready: Bool {
@@ -55,5 +58,13 @@ class Operation: NSOperation {
     
     func finish() {
         state = .Finished
+    }
+    
+    override func cancel() {
+        super.cancel()
+        if let cancellationBlock = cancellationBlock {
+            cancellationBlock()
+        }
+        
     }
 }

@@ -27,8 +27,11 @@ extension Image {
         return UIImage(data: data)
     }
     
-    func imageDataWith(image: UIImage) {
-        self.imageData = UIImagePNGRepresentation(image)
+    func imageDataWith(image: UIImage?) {
+        guard let img = image else {
+            return
+        }
+        self.imageData = UIImagePNGRepresentation(img)
     }
     
     func thumbnailImage() -> UIImage? {
@@ -38,7 +41,12 @@ extension Image {
         return UIImage(data: data)
     }
     
-    func thumbnailDataWith(image: UIImage) {
-        self.thumbnailData = UIImagePNGRepresentation(image)
+    func thumbnailDataWith(image: UIImage?) {
+        guard let img = image else {
+            return
+        }
+        let scaledSize = 160 / UIScreen.mainScreen().scale
+        let thumImg = img.thumbnailWithSize(CGSizeMake(scaledSize, scaledSize))
+        self.thumbnailData = UIImagePNGRepresentation(thumImg)
     }
 }

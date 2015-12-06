@@ -46,8 +46,6 @@ class ViewController: UIViewController {
     }
 
     @IBAction func loginButtonWasPressed(sender: UIButton) {
-        self.performSegueWithIdentifier("loginToMain", sender: self)
-        return
         sender.userInteractionEnabled = false
         let dictionary = [
             "username": loginTextField.text!,
@@ -57,11 +55,12 @@ class ViewController: UIViewController {
         let authOperation = AuthOperation(json: dictionary, route: .SignIn)
         authOperation.completionBlock = {
             sender.userInteractionEnabled = true
-            dispatch_async(dispatch_get_main_queue(), { () -> Void in
+            dispatch_async(dispatch_get_main_queue(), { [unowned self] in
                 self.performSegueWithIdentifier("loginToMain", sender: self)
             })
         }
-        authOperation.cancelationBlock = {
+        authOperation.cancellationBlock = {
+            print("Canceled")
             sender.userInteractionEnabled = true
         }
         
@@ -77,7 +76,7 @@ class ViewController: UIViewController {
         if let rect = userInfo[UIKeyboardFrameBeginUserInfoKey]?.CGRectValue {
             let kbSize = rect.height
 
-            UIView.animateWithDuration(0.4, animations: { () -> Void in
+            UIView.animateWithDuration(0.3, animations: { [unowned self] in
                 self.horizontalCenterConstraint.priority = UILayoutPriorityDefaultLow
                 self.buttomTrailingConstraint.constant = kbSize
                 self.view.layoutIfNeeded()
@@ -86,7 +85,7 @@ class ViewController: UIViewController {
     }
     
     func keyboardWillBeHidden(sender: NSNotification) {
-        UIView.animateWithDuration(0.4, animations: { () -> Void in
+        UIView.animateWithDuration(0.3, animations: { [unowned self] in
             self.horizontalCenterConstraint.priority = UILayoutPriorityDefaultHigh
             self.view.layoutIfNeeded()
         })

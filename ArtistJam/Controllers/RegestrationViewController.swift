@@ -74,7 +74,7 @@ class RegestrationViewController: UIViewController {
                 self.navigationController?.popViewControllerAnimated(true)
             })
         }
-        authOperation.cancelationBlock = {
+        authOperation.cancellationBlock = {
             sender.userInteractionEnabled = true
         }
         

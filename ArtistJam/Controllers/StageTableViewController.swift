@@ -13,11 +13,33 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
     @IBOutlet weak var composeBarButton: UIBarButtonItem!
     @IBOutlet weak var stageTopBarButton: UIButton!
     
-    let dateFormatter = NSDateFormatter()
+    lazy var dateFormatter: NSDateFormatter = {
+        let df = NSDateFormatter()
+        df.dateFormat = "LLLL dd, yyyy HH:mm"
+        
+        return df
+        }()
     
-    var fetchedResultController: NSFetchedResultsController!
-    let coreDataStack = CoreDataStack()
-    var category: Category = .Today {
+    let coreDataStack = (UIApplication.sharedApplication().delegate as! AppDelegate).coreDataStack
+    lazy var fetchedResultController: NSFetchedResultsController = {
+            let fetchRequest = NSFetchRequest(entityName: "Event")
+            let descriptor = NSSortDescriptor(key: "date", ascending: false)
+            
+            fetchRequest.sortDescriptors = [descriptor]
+            fetchRequest.fetchBatchSize = 10
+            fetchRequest.relationshipKeyPathsForPrefetching = ["imageData"]
+            
+            let fetchedResultController = NSFetchedResultsController(fetchRequest: fetchRequest,
+                managedObjectContext: self.coreDataStack.context,
+                sectionNameKeyPath: "date", cacheName: nil)
+            
+            fetchedResultController.delegate = self
+            return fetchedResultController
+        }()
+    
+    private static let today = NSDate()
+    
+    var category: StageLoaderOpertion.Category = .Today {
         didSet {
             update()
         }
@@ -25,32 +47,39 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
     
     lazy var operationQueue: NSOperationQueue = {
         let queue = NSOperationQueue()
-        queue.maxConcurrentOperationCount = 1
+//        queue.maxConcurrentOperationCount = 1
         return queue
     }()
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        dateFormatter.dateFormat = "LLLL dd, yyyy HH:mm"
-        
-        let fetchRequesst = NSFetchRequest(entityName: "Event")
-        let dateDescriptor = NSSortDescriptor(key: "date", ascending: false)
-        fetchRequesst.sortDescriptors = [dateDescriptor]
-        
-        fetchedResultController = NSFetchedResultsController(fetchRequest: fetchRequesst, managedObjectContext: coreDataStack.context, sectionNameKeyPath: "title", cacheName: nil)
-        fetchedResultController.delegate = self
+        addGradientBackground(self)
         
         self.tableView.rowHeight = 210
-        addGradientBackground(self)
+        
         self.refreshControl?.tintColor = UIColor.darkGrayColor()
         self.refreshControl?.layer.zPosition = 1
         
         self.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: UIBarButtonSystemItem.Compose, target: self, action: "composeBarButtonWasPressed:")
+
+        NSNotificationCenter.defaultCenter().addObserverForName("PrivateContextSaved", object: nil, queue: nil, usingBlock: { notification in
+            dispatch_async(dispatch_get_main_queue(), { [weak self] in
+                print(notification.name)
+                self?.fetch()
+                self?.tableView.reloadData()
+            })
+        })
     }
     
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
         update()
+        self.tableView.reloadData()
+    }
+    
+    override func viewWillDisappear(animated: Bool) {
+        super.viewWillDisappear(animated)
+        operationQueue.cancelAllOperations()
     }
     
     override func didReceiveMemoryWarning() {
@@ -61,9 +90,10 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
     // MARK: - Table view data source
     override func numberOfSectionsInTableView(tableView: UITableView) -> Int {
         guard let sections = fetchedResultController.sections else {
+            print("sections = nil")
             return 0
         }
-        
+        print("\(sections.count) sections")
         return sections.count
     }
 
@@ -73,31 +103,37 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
 
     override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCellWithIdentifier("stageCell", forIndexPath: indexPath) as! PostTableViewCell
-        
-        let event = fetchedResultController.objectAtIndexPath(indexPath) as! Event
-        cell.titleLabel.text = event.title
-        cell.descriptionLabel.text = event.details
-        cell.dateLabel.text = dateFormatter.stringFromDate(event.date!)
-        
-        if let image = event.imageData?.thumbnailImage() {
-            cell.stageImageView.image = image
-        } else {
-            let operations = cell.loadImageFor(postEntity: event, atCoreDataStack: self.coreDataStack)
-            
-            operations.filter.addDependency(operations.loader)
-            
-            operationQueue.addOperation(operations.loader)
-            operationQueue.addOperation(operations.filter)
-        }
-
+        configureCell(cell, indexPath: indexPath)
         return cell
     }
     
-    override func tableView(tableView: UITableView, willDisplayCell cell: UITableViewCell, forRowAtIndexPath indexPath: NSIndexPath) {
-        if let cell = cell as? PostTableViewCell {
-            cell.delegate = self
-            cell.indexPath = indexPath
+    func configureCell(cell: PostTableViewCell, indexPath: NSIndexPath) -> PostTableViewCell {
+        let event = fetchedResultController.objectAtIndexPath(indexPath) as! Event
+        
+        cell.titleLabel.text = event.title
+        cell.descriptionLabel.text = event.details
+        cell.dateLabel.text = dateFormatter.stringFromDate(event.date!)
+        cell.stageImageView.image = UIImage(named: "placeholder")
+        
+        if let image = event.imageData?.thumbnailImage() {
+            cell.stageImageView.image = image
+        } else if !cell.loading {
+            let (loader, filter) = cell.imageOperations(postEntity: event, coreDataStack: coreDataStack)
+            
+            filter.addDependency(loader)
+            
+            operationQueue.addOperation(loader)
+            operationQueue.addOperation(filter)
         }
+        
+        return cell
+    }
+
+    
+    override func tableView(tableView: UITableView, willDisplayCell cell: UITableViewCell, forRowAtIndexPath indexPath: NSIndexPath) {
+        let cell = cell as! PostTableViewCell
+        cell.delegate = self
+        cell.indexPath = indexPath
     }
     
     override func tableView(tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
@@ -116,39 +152,32 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
     }
     
     func update() {
+        self.fetchedResultController.fetchRequest.predicate = self.category.predicate()
         let stageLoadOperation = StageLoaderOpertion(category: category)
+        
         let title = self.category.rawValue.capitalizedString
         self.stageTopBarButton.setTitle(title, forState: .Normal)
         
+        print("Updating...")
         stageLoadOperation.completionBlock = {
-            dispatch_async(dispatch_get_main_queue(), { () -> Void in
-                self.tableView.reloadData()
-                self.refreshControl?.endRefreshing()
-//                NSTimer.scheduledTimerWithTimeInterval(0.2, target: self.refreshControl!, selector:"endRefreshing", userInfo: nil, repeats: false)
+            NSOperationQueue.mainQueue().addOperationWithBlock({ [weak self] in
+                self?.refreshControl?.endRefreshing()
+                self?.fetch()
+                self?.tableView.reloadData()
             })
         }
         
-        let today = NSDate()
-//        print(today + 1.day)
-        switch category {
-        case .Today:
-            fetchedResultController.fetchRequest.predicate = NSPredicate(format: "date < %@ and date > %@", today + 1.day, today - 1.day)
-        case .Coming:
-            fetchedResultController.fetchRequest.predicate = NSPredicate(format: "date > %@", today + 1.day)
-        default:
-            fetchedResultController.fetchRequest.predicate = nil
-        }
-        
+        operationQueue.cancelAllOperations()
+        operationQueue.addOperation(stageLoadOperation)
+    }
+
+    
+    func fetch() {
         do {
             try fetchedResultController.performFetch()
         } catch let error as NSError {
             print("Error: \(error.localizedDescription)")
         }
-        
-        operationQueue.addOperation(stageLoadOperation)
-    }
-    
-    func reload() {
         self.tableView.reloadData()
     }
     
@@ -159,15 +188,15 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
     @IBAction func showActionSheet(sender: UIButton) {
         let actionSheet = UIAlertController(title: nil, message: nil, preferredStyle: .ActionSheet)
         
-        let todayAction = UIAlertAction(title: "Today", style: .Default) { _ in
+        let todayAction = UIAlertAction(title: "Today", style: .Default) {[unowned self] _ in
             self.category = .Today
         }
         
-        let comingAction = UIAlertAction(title: "Coming", style: .Default) { _ in
+        let comingAction = UIAlertAction(title: "Coming", style: .Default) {[unowned self] _ in
             self.category = .Coming
         }
         
-        let newAction = UIAlertAction(title: "New", style: .Default) { _ in
+        let newAction = UIAlertAction(title: "New", style: .Default) {[unowned self] _ in
             self.category = .New
         }
         
@@ -187,7 +216,18 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
     }
     
     @IBAction func composeBarButtonWasPressed(sender: UIBarButtonItem) {
-        performSegueWithIdentifier("stageToNewsSegue", sender: self)
+        let alertController = UIAlertController(title: nil, message: "What do you want to create?", preferredStyle: UIAlertControllerStyle.ActionSheet)
+        let eventAction = UIAlertAction(title: "Event", style: UIAlertActionStyle.Default) { [unowned self] _ in
+            self.performSegueWithIdentifier("stageToEventSegue", sender: self)
+        }
+        let newsAction = UIAlertAction(title: "News", style: UIAlertActionStyle.Default) { [unowned self] _ in
+            self.performSegueWithIdentifier("stageToNewsSegue", sender: self)
+        }
+        let cancelAction = UIAlertAction(title: "Cancel", style: UIAlertActionStyle.Destructive, handler: nil)
+        alertController.addAction(eventAction)
+        alertController.addAction(newsAction)
+        alertController.addAction(cancelAction)
+        self.presentViewController(alertController, animated: true, completion: nil)
     }
     
     
@@ -222,12 +262,12 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
     func controller(controller: NSFetchedResultsController, didChangeObject anObject: AnyObject, atIndexPath indexPath: NSIndexPath?, forChangeType type: NSFetchedResultsChangeType, newIndexPath: NSIndexPath?) {
 
         switch type {
-        case .Update:
-            tableView.reloadRowsAtIndexPaths([indexPath!], withRowAnimation: UITableViewRowAnimation.Automatic)
-        case .Insert:
-            tableView.insertRowsAtIndexPaths([newIndexPath!], withRowAnimation: UITableViewRowAnimation.Middle)
-        default:
-            return
+            case .Update:
+                tableView.reloadSections(NSIndexSet(index: indexPath!.section), withRowAnimation: .Automatic)
+            case .Insert:
+                tableView.insertSections(NSIndexSet(index:newIndexPath!.section), withRowAnimation: .Automatic)
+            default:
+                return
         }
     }
     

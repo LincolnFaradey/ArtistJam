@@ -15,7 +15,7 @@ class BackgroundDataWorker {
     static let sharedManager = BackgroundDataWorker()
     
     let coreDataStack = (UIApplication.sharedApplication().delegate as! AppDelegate).coreDataStack
-    let privateContext = NSManagedObjectContext(concurrencyType: .PrivateQueueConcurrencyType)
+    let privateContext: NSManagedObjectContext
     lazy var dateFormatter:NSDateFormatter = {
             let df = NSDateFormatter()
             df.dateFormat = "LL dd, yyyy HH:mm"
@@ -23,50 +23,66 @@ class BackgroundDataWorker {
         }()
     
     private init() {
-        self.privateContext.persistentStoreCoordinator = coreDataStack.psc
+//        privateContext = coreDataStack.context
+        privateContext = NSManagedObjectContext(concurrencyType: .PrivateQueueConcurrencyType)
+        self.privateContext.parentContext = coreDataStack.context
     }
     
-    func save(json: NSDictionary, type: PostType) {
+    func save(json: NSDictionary, type: PostType) -> Post? {
+        let id = json["id"] as? NSNumber
         let username = json["username"] as! String
         let title = json["title"] as! String
         let details = json["description"] as? String
         let imageLink = json["image_link"] as? String
         
-        privateContext.performBlock {
+        var newPost: Post?
+        privateContext.performBlockAndWait { [unowned self] in
             let artist = self.findOrCreateArtist(username)
             
-            let post = (type == .Event) ?
-                self.findOrCreatePostWith(title, type: .Event)
-                : self.findOrCreatePostWith(title, type: .News)
+            newPost = (type == .Event) ? self.findOrCreatePostWith(title, type: .Event)
+                                        : self.findOrCreatePostWith(title, type: .News)
+            guard let post = newPost else {
+                print("Couldn't create post")
+                return
+            }
             
+            post.webID = id
             post.artist = artist
             post.details = details
             post.imageLink = imageLink
             
+            
             if type == .Event {
                 let event = post as! Event
-                event.latitude = json["lat"] as? NSNumber
-                event.longitude = json["long"] as? NSNumber
+                event.latitude = json["lat"] as? NSNumber ?? 0
+                event.longitude = json["long"] as? NSNumber ?? 0
                 event.date = self.dateFormatter.dateFromString(json["when"] as! String)
             }else {
                 let news = post as! News
-                news.likes = json["likes"] as? NSNumber
-                news.liked = json["liked"] as? NSNumber
+                news.likes = json["likes"] as? NSNumber ?? 0
+                news.liked = json["liked"] as? NSNumber ?? 0
             }
-            self.saveContext()
         }
+        
+        return newPost
+    }
+    
+    func update(post: Post, value: AnyObject, keyPath: String) {
+        post.setValue(value, forKeyPath: keyPath)
+        self.saveContext()
     }
     
     func saveContext() {
         
         if privateContext.hasChanges {
+            print("private context has changes")
             do {
                 try privateContext.save()
+                NSNotificationCenter.defaultCenter().postNotificationName("PrivateContextSaved", object: nil)
             } catch let error as NSError {
                 print("Could not save: \(error), \(error.userInfo)")
             }
         }
-        
     }
     
     func findOrCreatePostWith(title: String, type: PostType) -> Post {
@@ -78,11 +94,12 @@ class BackgroundDataWorker {
         
         let fetchResult = try! privateContext.executeFetchRequest(fetchRequest)
         
-        
         if fetchResult.count == 0 {
             let post = NSEntityDescription.insertNewObjectForEntityForName(type.rawValue, inManagedObjectContext: privateContext) as! Post
-            let images = NSEntityDescription.insertNewObjectForEntityForName("Image", inManagedObjectContext: privateContext) as! Image
-            post.imageData = images
+            let image = NSEntityDescription.insertNewObjectForEntityForName("Image", inManagedObjectContext: privateContext) as! Image
+            
+            post.title = title
+            post.imageData = image
             
             return post
         }

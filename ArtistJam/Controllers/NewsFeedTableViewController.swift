@@ -15,23 +15,23 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
     
     lazy var fetchedResultController: NSFetchedResultsController = {
             let fetchRequesst = NSFetchRequest(entityName: "News")
-            let dateDescriptor = NSSortDescriptor(key: "title", ascending: false)
+            let descriptor = NSSortDescriptor(key: "title", ascending: false)
             
-            fetchRequesst.sortDescriptors = [dateDescriptor]
-            fetchRequesst.fetchBatchSize = 10
-//            fetchRequesst.relationshipKeyPathsForPrefetching = ["imageData"]
+            fetchRequesst.sortDescriptors = [descriptor]
+            fetchRequesst.fetchBatchSize = 8
+            fetchRequesst.relationshipKeyPathsForPrefetching = ["imageData"]
         
-            let frc = NSFetchedResultsController(fetchRequest: fetchRequesst,
+            let fetchedController = NSFetchedResultsController(fetchRequest: fetchRequesst,
                 managedObjectContext: self.coreDataStack.context,
-                sectionNameKeyPath: nil, cacheName: "newsCache")
-            frc.delegate = self
+                sectionNameKeyPath: nil, cacheName: nil)
+            fetchedController.delegate = self
             
-            return frc
+            return fetchedController
         }()
     
     lazy var operationQueue: NSOperationQueue = {
             let queue = NSOperationQueue()
-//            queue.maxConcurrentOperationCount = 1
+            queue.maxConcurrentOperationCount = 1
             return queue
     }()
     
@@ -51,11 +51,28 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
             print("Error: \(error.localizedDescription)")
         }
         
+        NSNotificationCenter.defaultCenter().addObserverForName("NewsContextSaved", object: nil, queue: nil, usingBlock: { notification in
+            dispatch_async(dispatch_get_main_queue(), {
+                do {
+                    try self.fetchedResultController.performFetch()
+                    print("fetched")
+                } catch let error as NSError {
+                    print("Error: \(error.localizedDescription)")
+                }
+            })
+        })
+        
     }
     
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
         update()
+    }
+    
+    override func viewWillDisappear(animated: Bool) {
+        super.viewWillDisappear(animated)
+        operationQueue.cancelAllOperations()
+        operationQueue.waitUntilAllOperationsAreFinished()
     }
     
     override func numberOfSectionsInTableView(tableView: UITableView) -> Int {
@@ -71,10 +88,8 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
     let identifier = "newsCell"
     override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCellWithIdentifier(identifier) as! PostTableViewCell
-        
-        let configCell = configureCell(cell, indexPath: indexPath)
-        
-        return configCell
+        configureCell(cell, indexPath: indexPath)
+        return cell
     }
     
     
@@ -83,18 +98,18 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
         
         cell.titleLabel.text = news.title
         cell.descriptionLabel.text = news.details
-        cell.likesCounterLabel.text = String(news.likes!)
+        cell.likesCounterLabel.text = news.likes?.stringValue
+        cell.stageImageView.image = UIImage(named: "placeholder")
         if let _ = news.liked {} else {
             news.liked = NSNumber(bool: false)
         }
         
         cell.likeButton.setImage(UIImage(named: news.liked!.boolValue ? "likeFilled" : "likeEmpty"), forState: .Normal)
         
-        //TODO: Create table for loading cells
         if let image = news.imageData?.thumbnailImage() {
             cell.stageImageView.image = image
         } else if !cell.loading {
-            let (loader, filter) = cell.loadImageFor(postEntity: news, atCoreDataStack: self.coreDataStack)
+            let (loader, filter) = cell.imageOperations(postEntity: news, coreDataStack: coreDataStack)
             
             filter.addDependency(loader)
             
@@ -109,8 +124,6 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
         let cell = cell as! PostTableViewCell
         cell.delegate = self
         cell.indexPath = indexPath
-        
-        print("index row - \(indexPath.row), section - \(indexPath.section)")
     }
     
     override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
@@ -135,7 +148,6 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
         newsLoader.completionBlock = {
             dispatch_async(dispatch_get_main_queue(), {
                 self.refreshControl?.endRefreshing()
-//                NSTimer.scheduledTimerWithTimeInterval(0.2, target: self.refreshControl!, selector:"endRefreshing", userInfo: nil, repeats: false)
             })
         }
         operationQueue.addOperation(newsLoader)
@@ -165,21 +177,26 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
         let liked = news.liked!.boolValue
         let likes = news.likes!.intValue
         
-        
         task?.cancel()
         
+        let url: NSURL
         if liked {
             news.likes = NSNumber(int: likes - 1)
-            task = NSURLSession.sharedSession().dataTaskWithURL(NSURL(string: ADDRESS + "/news/unlike/" + news.webID!.stringValue)!)
+            url = NSURL(string: "\(ADDRESS)/news/unlike/\(news.webID!.stringValue)")!
         } else {
             news.likes = NSNumber(int: likes + 1)
-            task = NSURLSession.sharedSession().dataTaskWithURL(NSURL(string: ADDRESS + "/news/like/" + news.webID!.stringValue)!)
+            url = NSURL(string: "\(ADDRESS)/news/like/\(news.webID!.stringValue)")!
+            
         }
-        
+        print("URL - \(url)")
+        task = NSURLSession.sharedSession().dataTaskWithURL(url, completionHandler: { (data, response, error) -> Void in
+            let json = try! NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments)
+            print("liked response - \(json)")
+        })
         task?.resume()
         
         news.liked = NSNumber(bool: !liked)
-
+        self.coreDataStack.saveContext()
         UIView.transitionWithView(sender, duration: 0.1, options: UIViewAnimationOptions.TransitionFlipFromRight, animations: { _ in
         
             sender.setImage(UIImage(named: news.liked!.boolValue ? "likeFilled" : "likeEmpty"), forState: .Normal)
@@ -196,7 +213,7 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
             case .Update:
                 tableView.reloadRowsAtIndexPaths([indexPath!], withRowAnimation: UITableViewRowAnimation.Automatic)
             case .Insert:
-                tableView.insertRowsAtIndexPaths([newIndexPath!], withRowAnimation: UITableViewRowAnimation.Middle)
+                tableView.insertRowsAtIndexPaths([newIndexPath!], withRowAnimation: UITableViewRowAnimation.Automatic)
             default:
                 return
         }

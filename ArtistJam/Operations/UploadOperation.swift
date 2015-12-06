@@ -17,7 +17,7 @@ class UploadOperation: Operation {
         let request = AWSS3TransferManagerUploadRequest()
 
         request.bucket = BUCKET
-        request.uploadProgress = {(sent: Int64, total: Int64, expected: Int64) in
+        request.uploadProgress = {[unowned self] (sent: Int64, total: Int64, expected: Int64) in
             let percent = Int8(Double(total) / Double(expected) * 100)
             self.uploadProgress!(percent)
         }
@@ -30,8 +30,8 @@ class UploadOperation: Operation {
         return request
     }()
     
-    init(data: NSData, link: String) {
-        self.imageData = data
+    init(image: UIImage, link: String) {
+        self.imageData = UIImagePNGRepresentation(image.thumbnailWithSize(CGSizeMake(600, 600)))!
         self.imageLink = link
     }
     
@@ -48,7 +48,7 @@ class UploadOperation: Operation {
         
         UIApplication.sharedApplication().networkActivityIndicatorVisible = true
         if let task = AWSS3TransferManager.defaultS3TransferManager().upload(s3UploadRequest) {
-            task.continueWithSuccessBlock { (task: AWSTask!) -> AnyObject! in
+            task.continueWithSuccessBlock { [unowned self] (task: AWSTask!) -> AnyObject! in
                 UIApplication.sharedApplication().networkActivityIndicatorVisible = false
                 self.finish()
                 return nil
@@ -76,10 +76,10 @@ func saveData(data: NSData) -> NSURL {
     return NSURL(fileURLWithPath: path)
 }
 
-
+let dateFormatter = NSDateFormatter()
 func todayStringName() -> String {
     let today = NSDate()
-    let dateFormatter = NSDateFormatter()
+    
     dateFormatter.dateFormat = "MM-dd-yyyy-hh:mm:ssa"
     return dateFormatter.stringFromDate(today)
 }

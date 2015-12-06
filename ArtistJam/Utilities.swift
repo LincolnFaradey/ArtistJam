@@ -10,12 +10,11 @@ import Foundation
 import UIKit
 import CoreGraphics
 
-let ADDRESS = "https://www.artistjam.net"
+let ADDRESS = "https://www.artistjam.net/"
 
-func createAuthRequest(route route: String, json: NSDictionary) -> NSURLRequest? {
-    let loginURL = NSURL(string: ADDRESS + "/auth/" + route)
-    print("json \(json)")
-    let request = NSMutableURLRequest(URL: loginURL!, cachePolicy: NSURLRequestCachePolicy.UseProtocolCachePolicy, timeoutInterval: 60)
+func createAuthRequest(route route: Route, json: NSDictionary) -> NSURLRequest? {
+    print("Route: \(route.url())")
+    let request = NSMutableURLRequest(URL: route.url(), cachePolicy: NSURLRequestCachePolicy.UseProtocolCachePolicy, timeoutInterval: 60)
     request.HTTPMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "content-type")
     
@@ -38,20 +37,7 @@ func handleError(title: String, message: String, okAction: ((UIAlertAction)->Voi
     rootVC?.presentViewController(errorController, animated: true, completion: nil)
 }
 
-func createPostEventRequest(route route: String, json: NSDictionary) -> NSURLRequest? {
-    let loginURL = NSURL(string: ADDRESS + "/" + route)
-    let request = NSMutableURLRequest(URL: loginURL!, cachePolicy: NSURLRequestCachePolicy.UseProtocolCachePolicy, timeoutInterval: 60)
-    request.HTTPMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "content-type")
-    
-    do {
-        request.HTTPBody = try NSJSONSerialization.dataWithJSONObject(json, options: NSJSONWritingOptions.PrettyPrinted)
-        return request
-    } catch let error as NSError {
-        print("cannot serialize: \(error.userInfo)")
-        return nil
-    }
-}
+
 
 func imageByCropping(image: UIImage, rect: CGRect) -> UIImage {
     let imgRef = CGImageCreateWithImageInRect(image.CGImage, rect)
@@ -98,6 +84,21 @@ func correctFolderName(name: String) -> String? {
     return nil
 }
 
+extension NSCache {
+    subscript(key: AnyObject) -> AnyObject? {
+        get {
+            return objectForKey(key)
+        }
+        set {
+            if let value: AnyObject = newValue {
+                setObject(value, forKey: key)
+            } else {
+                removeObjectForKey(key)
+            }
+        }
+    }
+}
+
 extension Int {
     func hexString() -> String {
         return String(format: "%02x", self)
@@ -137,6 +138,10 @@ extension String {
 }
 
 extension Int{
+    var hour: (Int, NSCalendarUnit) {
+        return (self, NSCalendarUnit.Hour)
+    }
+    
     var day: (Int, NSCalendarUnit) {
         return (self, NSCalendarUnit.Day)
     }

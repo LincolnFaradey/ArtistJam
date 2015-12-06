@@ -35,7 +35,7 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     var strDate: String?
     lazy var dateFormatter: NSDateFormatter = {
         let dateFormatter = NSDateFormatter()
-        dateFormatter.dateFormat = "dd-MM-yyyy HH:mm"
+        dateFormatter.dateFormat = "LL dd, yyyy HH:mm"
         
         return dateFormatter
     }()
@@ -122,9 +122,9 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     
     func isReadyToPost() -> Bool {
         if titleTextField.text!.characters.count < 4 {
-            handleError("Error", message: "Length of the title cannot be less then 4 characters", okAction: nil)
+            handleError("Error", message: "Length of the title cannot be less than 4 characters", okAction: nil)
         } else if descriptionTextView.text!.characters.count < 4 {
-            handleError("Error", message: "Length of the description cannot be less then 4 characters", okAction: nil)
+            handleError("Error", message: "Length of the description cannot be less than 4 characters", okAction: nil)
         } else if image == nil {
             handleError("Error", message: "You didn't add an image to your post", okAction: nil)
         } else if strDate == nil {
@@ -139,22 +139,19 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     }
     
     func addEvent() -> Post {
-        let event = NSEntityDescription.insertNewObjectForEntityForName("Event", inManagedObjectContext: coreDataStack.context) as! Event
-        let artist = NSEntityDescription.insertNewObjectForEntityForName("Artist", inManagedObjectContext: self.coreDataStack.context) as! Artist
+        let username = NSUserDefaults.standardUserDefaults().valueForKey("username") as! String
+
+        let eventDic: [String: AnyObject] = [
+            "username": username,
+            "title": titleTextField.text!,
+            "description": descriptionTextView.text!,
+            "image_link": fileLink(),
+            "when": strDate!,
+            "lat": locationCoordinates!.latitude,
+            "lon": locationCoordinates!.longitude
+        ]
         
-        artist.username = NSUserDefaults.standardUserDefaults().valueForKey("username") as? String
-        artist.role = Role.Artist.rawValue
-        
-        event.artist = artist
-        event.title = titleTextField.text
-        event.details = descriptionTextView.text
-        event.date = dateFormatter.dateFromString(strDate!)
-        event.imageLink = fileLink()
-        event.imageData?.imageDataWith(self.image!)
-        event.latitude = locationCoordinates!.latitude
-        event.longitude = locationCoordinates!.longitude
-        self.coreDataStack.saveContext()
-        
+        let event = BackgroundDataWorker.sharedManager.save(eventDic, type: .Event) as! Event
         return event
     }
     
@@ -166,7 +163,7 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
         let event = addEvent()
         print("id: \(event.objectID)")
         
-        AWSUploadOperation = UploadOperation(data: UIImagePNGRepresentation(self.image!)!, link: fileLink())
+        AWSUploadOperation = UploadOperation(image: self.image!, link: fileLink())
         let postUpload = PostUploadOperation(post: event)
         postUpload.addDependency(AWSUploadOperation!)
         

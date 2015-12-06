@@ -20,14 +20,16 @@ class ImageFilterOperation: Operation {
             self.cancel()
             return
         }
-        
+        if cancelled {
+            return
+        }
         self.outImage = monochromeImage()
         print("Filtering finished")
         finish()
     }
     
     func monochromeImage() -> UIImage {
-        let img = CIImage(CGImage: self.image!.CGImage!)
+        let img = CIImage(CGImage: self.image!.thumbnailWithSize(CGSizeMake(150, 150)).CGImage!)
 
         let filter = CIFilter(name: "CIPhotoEffectTonal")!
         

@@ -26,7 +26,7 @@ class DownloadOperation: Operation {
         request.key = self.imageLink
         request.downloadingFileURL = NSURL(fileURLWithPath: self.tmpImagePath)
         
-        request.downloadProgress = {(sent: Int64, total: Int64, expected: Int64) in
+        request.downloadProgress = { [unowned self] (sent: Int64, total: Int64, expected: Int64) in
             let percent = Int8(Double(total) / Double(expected) * 100)
             self.progress!(percent)
         }
@@ -41,34 +41,55 @@ class DownloadOperation: Operation {
     
     override func main() {
         progress = {(percents: Int8) in
-            print("Accept: \(percents)")
+            if percents % 10 == 0 {
+                print("Accept: \(percents)")
+            }
         }
         
         UIApplication.sharedApplication().networkActivityIndicatorVisible = true
-        
-        if let task = AWSS3TransferManager.defaultS3TransferManager().download(s3Request) {
-            task.continueWithSuccessBlock { (task: AWSTask!) -> AnyObject! in
-
-                let imageData = NSData(contentsOfFile: self.tmpImagePath)!.copy() as! NSData
-
-                self.downloadedImage = UIImage(data: imageData)
-                self.finish()
-                return nil
-            }
+        if cancelled {
+            print("\(self.name) cancelled")
+            return
         }
+        if let task = AWSS3TransferManager.defaultS3TransferManager().download(s3Request) {
+//            task.continueWithSuccessBlock { [unowned self] (task: AWSTask!) -> AnyObject! in
+//                let imageData = NSData(contentsOfFile: self.tmpImagePath)!
+//                self.downloadedImage = UIImage(data: imageData)
+//                self.finish()
+//                return nil
+//            }
+            
+            task.continueWithBlock({ [unowned self] (task: AWSTask!) -> AnyObject! in
+                
+                if task.exception == nil || task.error == nil {
+                    print("Task exception - \(task.exception)\nTask error - \(task.error)")
+                    self.cancel()
+                    return nil
+                } else {
+                    let imageData = NSData(contentsOfFile: self.tmpImagePath)!
+                    self.downloadedImage = UIImage(data: imageData)
+                    self.finish()
+                    return nil;
+                }
+                
+            })
+        }
+        
+    
     }
     
     override func finish() {
         super.finish()
-        removeTmpImage()
         UIApplication.sharedApplication().networkActivityIndicatorVisible = false
+        removeTmpImage()
     }
     
     override func cancel() {
+        super.cancel()
+        UIApplication.sharedApplication().networkActivityIndicatorVisible = false
         s3Request.cancel()
         removeTmpImage()
-        UIApplication.sharedApplication().networkActivityIndicatorVisible = false
-        super.cancel()
+        print("cancelled")
     }
     
     private func removeTmpImage() {

@@ -6,35 +6,45 @@
 //  Copyright © 2015 Andrei Nechaev. All rights reserved.
 //
 
-enum Route: String {
-    case SignIn = "signin"
-    case SignUp = "signup"
+let baseURL = NSURL(string: "https://www.artistjam.net/")!
+enum Route {
+    case SignIn
+    case SignUp
+    case Logout
+    case Stage(String)
+    case News(String)
+    
+    func url() -> NSURL {
+        switch self {
+        case .SignIn:
+            return baseURL.URLByAppendingPathComponent("/auth/signin")
+        case .SignUp:
+            return baseURL.URLByAppendingPathComponent("/auth/signup")
+        case .Logout:
+            return baseURL.URLByAppendingPathComponent("/auth/logout")
+        case .Stage(let category):
+            return baseURL.URLByAppendingPathComponent("/stage/\(category)")
+        case .News(let addr):
+            return baseURL.URLByAppendingPathComponent("/feed/news/\(addr)")
+        }
+    }
 }
 
-typealias CancelationBlock = ()->()
-
 class AuthOperation: Operation {
-    var cancelationBlock = CancelationBlock?()
-    
-    private var json: NSDictionary
-    private let route: String
+    private let request: NSURLRequest
     
     private var task: NSURLSessionDataTask?
     private var jsonData: NSData?
     
     init(json: NSDictionary, route: Route) {
-        self.json = json
-
-        self.route = route.rawValue
+        print("JSON Auth: \(json)")
+        self.request = createAuthRequest(route: route, json: json)!
     }
     
     override func main() {
-        guard let request = createAuthRequest(route: route, json: json) else {
-            cancel()
-            return
-        }
         self.task = NSURLSession.sharedSession().dataTaskWithRequest(request, completionHandler: { (data: NSData?, response: NSURLResponse?, error: NSError?) -> Void in
             if error != nil {
+                print(error?.userInfo)
                 self.cancel()
                 return
             }
@@ -61,10 +71,6 @@ class AuthOperation: Operation {
     }
     
     override func cancel() {
-        if let block = cancelationBlock {
-            block()
-        }
-        
         self.task?.cancel()
         super.cancel()
     }
