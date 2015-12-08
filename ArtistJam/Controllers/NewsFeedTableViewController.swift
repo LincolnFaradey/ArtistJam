@@ -92,7 +92,6 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
         return cell
     }
     
-    
     func configureCell(cell: PostTableViewCell, indexPath: NSIndexPath) -> PostTableViewCell {
         let news = fetchedResultController.objectAtIndexPath(indexPath) as! News
         
