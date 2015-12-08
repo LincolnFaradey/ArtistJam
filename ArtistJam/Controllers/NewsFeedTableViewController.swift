@@ -71,8 +71,8 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
     
     override func viewWillDisappear(animated: Bool) {
         super.viewWillDisappear(animated)
-        operationQueue.cancelAllOperations()
-        operationQueue.waitUntilAllOperationsAreFinished()
+//        operationQueue.cancelAllOperations()
+//        operationQueue.waitUntilAllOperationsAreFinished()
     }
     
     override func numberOfSectionsInTableView(tableView: UITableView) -> Int {
