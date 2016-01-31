@@ -14,6 +14,7 @@ class Operation: NSOperation {
         case Ready = "isReady"
         case Executing = "isExecuting"
         case Finished = "isFinished"
+        case Cancelled = "isCancelled"
     }
     
     // MARK: - Properties
@@ -24,7 +25,7 @@ class Operation: NSOperation {
         }
         didSet {
             didChangeValueForKey(oldValue.rawValue)
-            didChangeValueForKey(state.rawValue)
+            didChangeValueForKey(self.state.rawValue)
         }
     }
     
@@ -61,7 +62,8 @@ class Operation: NSOperation {
     }
     
     override func cancel() {
-        super.cancel()
+//        super.cancel()
+        state = .Cancelled
         if let cancellationBlock = cancellationBlock {
             cancellationBlock()
         }

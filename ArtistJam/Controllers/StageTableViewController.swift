@@ -62,13 +62,13 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
         
         self.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: UIBarButtonSystemItem.Compose, target: self, action: "composeBarButtonWasPressed:")
 
-        NSNotificationCenter.defaultCenter().addObserverForName("PrivateContextSaved", object: nil, queue: nil, usingBlock: { notification in
-            dispatch_async(dispatch_get_main_queue(), { [weak self] in
-                print(notification.name)
-                self?.fetch()
-                self?.tableView.reloadData()
-            })
-        })
+//        NSNotificationCenter.defaultCenter().addObserverForName("PrivateContextSaved", object: nil, queue: nil, usingBlock: { notification in
+//            dispatch_async(dispatch_get_main_queue(), { [weak self] in
+//                print(notification.name)
+//                self?.fetch()
+//                self?.tableView.reloadData()
+//            })
+//        })
     }
     
     override func viewWillAppear(animated: Bool) {
@@ -90,10 +90,8 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
     // MARK: - Table view data source
     override func numberOfSectionsInTableView(tableView: UITableView) -> Int {
         guard let sections = fetchedResultController.sections else {
-            print("sections = nil")
             return 0
         }
-        print("\(sections.count) sections")
         return sections.count
     }
 
@@ -121,9 +119,7 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
             let (loader, filter) = cell.imageOperations(postEntity: event, coreDataStack: coreDataStack)
             
             filter.addDependency(loader)
-            
-            operationQueue.addOperation(loader)
-            operationQueue.addOperation(filter)
+            operationQueue.addOperations([loader, filter], waitUntilFinished: false)
         }
         
         return cell
@@ -223,6 +219,7 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
         let newsAction = UIAlertAction(title: "News", style: UIAlertActionStyle.Default) { [unowned self] _ in
             self.performSegueWithIdentifier("stageToNewsSegue", sender: self)
         }
+        
         let cancelAction = UIAlertAction(title: "Cancel", style: UIAlertActionStyle.Destructive, handler: nil)
         alertController.addAction(eventAction)
         alertController.addAction(newsAction)

@@ -65,10 +65,7 @@ func grayStyleRoundedCorners(view: UIView, radius: Double) {
 
 func grayStyleRoundedCorners(views: [UIView], radius: Double) {
     for view in views {
-        view.clipsToBounds = true
-        view.layer.borderColor = UIColor(red:0.392,  green:0.380,  blue:0.380, alpha:1).CGColor
-        view.layer.borderWidth = 0.8
-        view.layer.cornerRadius = CGFloat(radius)
+        grayStyleRoundedCorners(view, radius: radius)
     }
 }
 

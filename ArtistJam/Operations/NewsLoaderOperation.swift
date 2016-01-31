@@ -33,7 +33,7 @@ class NewsLoaderOperatrion: Operation {
                     BackgroundDataWorker.sharedManager.saveContext()
                 }
                 self.finish()
-                NSNotificationCenter.defaultCenter().postNotificationName("NewsContextSaved", object: nil)
+//                NSNotificationCenter.defaultCenter().postNotificationName("NewsContextSaved", object: nil)
                 BackgroundDataWorker.sharedManager.privateContext.reset()
             } catch let error as NSError {
                 print("Error occured with JSON serialization: \n \(error.userInfo)")

@@ -51,31 +51,34 @@ class DownloadOperation: Operation {
             print("\(self.name) cancelled")
             return
         }
+        
+        let semaphore = dispatch_semaphore_create(0)
+        
         if let task = AWSS3TransferManager.defaultS3TransferManager().download(s3Request) {
-//            task.continueWithSuccessBlock { [unowned self] (task: AWSTask!) -> AnyObject! in
-//                let imageData = NSData(contentsOfFile: self.tmpImagePath)!
-//                self.downloadedImage = UIImage(data: imageData)
-//                self.finish()
-//                return nil
-//            }
-            
+
             task.continueWithBlock({ [unowned self] (task: AWSTask!) -> AnyObject! in
-                
-                if task.exception == nil || task.error == nil {
-                    print("Task exception - \(task.exception)\nTask error - \(task.error)")
-                    self.cancel()
-                    return nil
-                } else {
-                    let imageData = NSData(contentsOfFile: self.tmpImagePath)!
+                dispatch_semaphore_signal(semaphore)
+                guard !self.cancelled else {
+                    return nil;
+                }
+                if let imageData = NSData(contentsOfFile: self.tmpImagePath)
+                    where task.exception == nil || task.error == nil
+                {
                     self.downloadedImage = UIImage(data: imageData)
                     self.finish()
+                    
+                    return nil
+                } else {
+                    print("Task exception - \(task.exception)\nTask error - \(task.error)")
+                    self.cancel()
+                    
                     return nil;
                 }
                 
             })
         }
         
-    
+        dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER)
     }
     
     override func finish() {
@@ -94,7 +97,9 @@ class DownloadOperation: Operation {
     
     private func removeTmpImage() {
         do {
-            try NSFileManager.defaultManager().removeItemAtPath(tmpImagePath)
+            if (NSFileManager.defaultManager().fileExistsAtPath(tmpImagePath)) {
+                try NSFileManager.defaultManager().removeItemAtPath(tmpImagePath)
+            }
         }catch let err as NSError {
             print("Couldn't remove a file: \(err.localizedDescription) info: \(err.userInfo)")
         }

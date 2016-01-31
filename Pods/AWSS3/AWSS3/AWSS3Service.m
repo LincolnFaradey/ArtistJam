@@ -1,17 +1,17 @@
-/*
- Copyright 2010-2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-
- Licensed under the Apache License, Version 2.0 (the "License").
- You may not use this file except in compliance with the License.
- A copy of the License is located at
-
- http://aws.amazon.com/apache2.0
-
- or in the "license" file accompanying this file. This file is distributed
- on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- express or implied. See the License for the specific language governing
- permissions and limitations under the License.
- */
+//
+// Copyright 2010-2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License").
+// You may not use this file except in compliance with the License.
+// A copy of the License is located at
+//
+// http://aws.amazon.com/apache2.0
+//
+// or in the "license" file accompanying this file. This file is distributed
+// on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+// express or implied. See the License for the specific language governing
+// permissions and limitations under the License.
+//
 
 #import "AWSS3.h"
 
@@ -49,6 +49,7 @@ static NSDictionary *errorCodeDictionary = nil;
                             @"SignatureDoesNotMatch" : @(AWSS3ErrorSignatureDoesNotMatch),
                             @"TokenRefreshRequired" : @(AWSS3ErrorTokenRefreshRequired),
                             @"BucketAlreadyExists" : @(AWSS3ErrorBucketAlreadyExists),
+                            @"BucketAlreadyOwnedByYou" : @(AWSS3ErrorBucketAlreadyOwnedByYou),
                             @"NoSuchBucket" : @(AWSS3ErrorNoSuchBucket),
                             @"NoSuchKey" : @(AWSS3ErrorNoSuchKey),
                             @"NoSuchUpload" : @(AWSS3ErrorNoSuchUpload),
@@ -117,7 +118,11 @@ static NSDictionary *errorCodeDictionary = nil;
                                                     error:error];
     if(retryType == AWSNetworkingRetryTypeShouldNotRetry
        && currentRetryCount < self.maxRetryCount) {
-        if ([error.domain isEqualToString:AWSS3ErrorDomain]) {
+        if (response.statusCode == 200
+            && error
+            && error.code != NSURLErrorCancelled) {
+            retryType = AWSNetworkingRetryTypeShouldRetry;
+        } else if ([error.domain isEqualToString:AWSS3ErrorDomain]) {
             switch (error.code) {
                 case AWSS3ErrorExpiredToken:
                 case AWSS3ErrorInvalidAccessKeyId:
@@ -144,7 +149,6 @@ static NSDictionary *errorCodeDictionary = nil;
                     break;
             }
         }
-        
     }
     
     return retryType;
@@ -177,7 +181,9 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
 
 + (instancetype)defaultS3 {
     if (![AWSServiceManager defaultServiceManager].defaultServiceConfiguration) {
-        return nil;
+        @throw [NSException exceptionWithName:NSInternalInconsistencyException
+                                       reason:@"`defaultServiceConfiguration` is `nil`. You need to set it before using this method."
+                                     userInfo:nil];
     }
 
     static AWSS3 *_defaultS3 = nil;
@@ -227,15 +233,15 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                                                               service:AWSServiceS3
                                                          useUnsafeURL:NO];
 
-        AWSSignatureV4Signer *signer = [AWSSignatureV4Signer signerWithCredentialsProvider:_configuration.credentialsProvider
-                                                                                  endpoint:_configuration.endpoint];
+        AWSSignatureV4Signer *signer = [[AWSSignatureV4Signer alloc] initWithCredentialsProvider:_configuration.credentialsProvider
+                                                                                        endpoint:_configuration.endpoint];
+        AWSNetworkingRequestInterceptor *baseInterceptor = [[AWSNetworkingRequestInterceptor alloc] initWithUserAgent:_configuration.userAgent];
+        _configuration.requestInterceptors = @[baseInterceptor, signer];
 
         _configuration.baseURL = _configuration.endpoint.URL;
-        _configuration.requestInterceptors = @[[AWSNetworkingRequestInterceptor new], signer];
         _configuration.retryHandler = [[AWSS3RequestRetryHandler alloc] initWithMaximumRetryCount:_configuration.maxRetryCount];
 
         _networking = [[AWSNetworking alloc] initWithConfiguration:_configuration];
-
     }
 
     return self;
@@ -293,7 +299,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                      URLString:@"/{Bucket}/{Key+}"
                   targetPrefix:@""
                  operationName:@"AbortMultipartUpload"
-                   outputClass:nil];
+                   outputClass:[AWSS3AbortMultipartUploadOutput class]];
 }
 
 - (AWSTask *)completeMultipartUpload:(AWSS3CompleteMultipartUploadRequest *)request {
@@ -356,6 +362,15 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                      URLString:@"/{Bucket}?policy"
                   targetPrefix:@""
                  operationName:@"DeleteBucketPolicy"
+                   outputClass:nil];
+}
+
+- (AWSTask *)deleteBucketReplication:(AWSS3DeleteBucketReplicationRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodDELETE
+                     URLString:@"/{Bucket}?replication"
+                  targetPrefix:@""
+                 operationName:@"DeleteBucketReplication"
                    outputClass:nil];
 }
 
@@ -422,6 +437,15 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                    outputClass:[AWSS3GetBucketLifecycleOutput class]];
 }
 
+- (AWSTask *)getBucketLifecycleConfiguration:(AWSS3GetBucketLifecycleConfigurationRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodGET
+                     URLString:@"/{Bucket}?lifecycle"
+                  targetPrefix:@""
+                 operationName:@"GetBucketLifecycleConfiguration"
+                   outputClass:[AWSS3GetBucketLifecycleConfigurationOutput class]];
+}
+
 - (AWSTask *)getBucketLocation:(AWSS3GetBucketLocationRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodGET
@@ -440,13 +464,22 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                    outputClass:[AWSS3GetBucketLoggingOutput class]];
 }
 
-- (AWSTask *)getBucketNotification:(AWSS3GetBucketNotificationRequest *)request {
+- (AWSTask *)getBucketNotification:(AWSS3GetBucketNotificationConfigurationRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodGET
                      URLString:@"/{Bucket}?notification"
                   targetPrefix:@""
                  operationName:@"GetBucketNotification"
-                   outputClass:[AWSS3GetBucketNotificationOutput class]];
+                   outputClass:[AWSS3NotificationConfigurationDeprecated class]];
+}
+
+- (AWSTask *)getBucketNotificationConfiguration:(AWSS3GetBucketNotificationConfigurationRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodGET
+                     URLString:@"/{Bucket}?notification"
+                  targetPrefix:@""
+                 operationName:@"GetBucketNotificationConfiguration"
+                   outputClass:[AWSS3NotificationConfiguration class]];
 }
 
 - (AWSTask *)getBucketPolicy:(AWSS3GetBucketPolicyRequest *)request {
@@ -456,6 +489,15 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                   targetPrefix:@""
                  operationName:@"GetBucketPolicy"
                    outputClass:[AWSS3GetBucketPolicyOutput class]];
+}
+
+- (AWSTask *)getBucketReplication:(AWSS3GetBucketReplicationRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodGET
+                     URLString:@"/{Bucket}?replication"
+                  targetPrefix:@""
+                 operationName:@"GetBucketReplication"
+                   outputClass:[AWSS3GetBucketReplicationOutput class]];
 }
 
 - (AWSTask *)getBucketRequestPayment:(AWSS3GetBucketRequestPaymentRequest *)request {
@@ -611,6 +653,15 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                    outputClass:nil];
 }
 
+- (AWSTask *)putBucketLifecycleConfiguration:(AWSS3PutBucketLifecycleConfigurationRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodPUT
+                     URLString:@"/{Bucket}?lifecycle"
+                  targetPrefix:@""
+                 operationName:@"PutBucketLifecycleConfiguration"
+                   outputClass:nil];
+}
+
 - (AWSTask *)putBucketLogging:(AWSS3PutBucketLoggingRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodPUT
@@ -629,12 +680,30 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                    outputClass:nil];
 }
 
+- (AWSTask *)putBucketNotificationConfiguration:(AWSS3PutBucketNotificationConfigurationRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodPUT
+                     URLString:@"/{Bucket}?notification"
+                  targetPrefix:@""
+                 operationName:@"PutBucketNotificationConfiguration"
+                   outputClass:nil];
+}
+
 - (AWSTask *)putBucketPolicy:(AWSS3PutBucketPolicyRequest *)request {
     return [self invokeRequest:request
                     HTTPMethod:AWSHTTPMethodPUT
                      URLString:@"/{Bucket}?policy"
                   targetPrefix:@""
                  operationName:@"PutBucketPolicy"
+                   outputClass:nil];
+}
+
+- (AWSTask *)putBucketReplication:(AWSS3PutBucketReplicationRequest *)request {
+    return [self invokeRequest:request
+                    HTTPMethod:AWSHTTPMethodPUT
+                     URLString:@"/{Bucket}?replication"
+                  targetPrefix:@""
+                 operationName:@"PutBucketReplication"
                    outputClass:nil];
 }
 
@@ -689,7 +758,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                      URLString:@"/{Bucket}/{Key+}?acl"
                   targetPrefix:@""
                  operationName:@"PutObjectAcl"
-                   outputClass:nil];
+                   outputClass:[AWSS3PutObjectAclOutput class]];
 }
 
 - (AWSTask *)replicateObject:(AWSS3ReplicateObjectRequest *)request {
@@ -707,7 +776,7 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
                      URLString:@"/{Bucket}/{Key+}?restore"
                   targetPrefix:@""
                  operationName:@"RestoreObject"
-                   outputClass:nil];
+                   outputClass:[AWSS3RestoreObjectOutput class]];
 }
 
 - (AWSTask *)uploadPart:(AWSS3UploadPartRequest *)request {

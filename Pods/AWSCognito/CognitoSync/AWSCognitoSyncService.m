@@ -1,6 +1,17 @@
-/*
- Copyright 2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- */
+//
+// Copyright 2010-2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License").
+// You may not use this file except in compliance with the License.
+// A copy of the License is located at
+//
+// http://aws.amazon.com/apache2.0
+//
+// or in the "license" file accompanying this file. This file is distributed
+// on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+// express or implied. See the License for the specific language governing
+// permissions and limitations under the License.
+//
 
 #import "AWSCognitoSyncService.h"
 #import <AWSCore/AWSNetworking.h>
@@ -13,8 +24,6 @@
 #import <AWSCore/AWSURLRequestRetryHandler.h>
 #import <AWSCore/AWSSynchronizedMutableDictionary.h>
 #import "AWSCognitoSyncResources.h"
-
-NSString *const AWSCognitoSyncDefinitionFileName = @"cognito-sync-2014-06-30";
 
 @interface AWSCognitoSyncResponseSerializer : AWSJSONResponseSerializer
 
@@ -135,6 +144,11 @@ static NSDictionary *errorCodeDictionary = nil;
 
 @property (nonatomic, strong) AWSNetworking *networking;
 @property (nonatomic, strong) AWSServiceConfiguration *configuration;
+
+@end
+
+@interface AWSServiceConfiguration()
+
 @property (nonatomic, strong) AWSEndpoint *endpoint;
 
 @end
@@ -191,18 +205,19 @@ static AWSSynchronizedMutableDictionary *_serviceClients = nil;
     if (self = [super init]) {
         _configuration = [configuration copy];
 
-        _endpoint = [[AWSEndpoint alloc] initWithRegion:_configuration.regionType
-                                                service:AWSServiceCognitoService
-                                           useUnsafeURL:NO];
+        _configuration.endpoint = [[AWSEndpoint alloc] initWithRegion:_configuration.regionType
+                                                              service:AWSServiceCognitoSync
+                                                         useUnsafeURL:NO];
 
-        AWSSignatureV4Signer *signer = [AWSSignatureV4Signer signerWithCredentialsProvider:_configuration.credentialsProvider
-                                                                                  endpoint:_endpoint];
+        AWSSignatureV4Signer *signer = [[AWSSignatureV4Signer alloc] initWithCredentialsProvider:_configuration.credentialsProvider
+                                                                                        endpoint:_configuration.endpoint];
+        AWSNetworkingRequestInterceptor *baseInterceptor = [[AWSNetworkingRequestInterceptor alloc] initWithUserAgent:_configuration.userAgent];
+        _configuration.requestInterceptors = @[baseInterceptor, signer];
 
-        _configuration.baseURL = _endpoint.URL;
+        _configuration.baseURL = _configuration.endpoint.URL;
         _configuration.requestSerializer = [AWSJSONRequestSerializer new];
-        _configuration.requestInterceptors = @[[AWSNetworkingRequestInterceptor new], signer];
         _configuration.retryHandler = [[AWSCognitoSyncRequestRetryHandler alloc] initWithMaximumRetryCount:_configuration.maxRetryCount];
-        _configuration.headers = @{@"Host" : _endpoint.hostName,
+        _configuration.headers = @{@"Host" : _configuration.endpoint.hostName,
                                    @"Content-Type" : @"application/x-amz-json-1.1"};
 
         _networking = [[AWSNetworking alloc] initWithConfiguration:_configuration];

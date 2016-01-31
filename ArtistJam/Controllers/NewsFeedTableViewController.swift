@@ -24,6 +24,7 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
             let fetchedController = NSFetchedResultsController(fetchRequest: fetchRequesst,
                 managedObjectContext: self.coreDataStack.context,
                 sectionNameKeyPath: nil, cacheName: nil)
+        
             fetchedController.delegate = self
             
             return fetchedController
@@ -31,7 +32,7 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
     
     lazy var operationQueue: NSOperationQueue = {
             let queue = NSOperationQueue()
-            queue.maxConcurrentOperationCount = 1
+            queue.maxConcurrentOperationCount = 2
             return queue
     }()
     
@@ -50,17 +51,7 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
         } catch let error as NSError {
             print("Error: \(error.localizedDescription)")
         }
-        
-        NSNotificationCenter.defaultCenter().addObserverForName("NewsContextSaved", object: nil, queue: nil, usingBlock: { notification in
-            dispatch_async(dispatch_get_main_queue(), {
-                do {
-                    try self.fetchedResultController.performFetch()
-                    print("fetched")
-                } catch let error as NSError {
-                    print("Error: \(error.localizedDescription)")
-                }
-            })
-        })
+
         
     }
     
@@ -71,7 +62,7 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
     
     override func viewWillDisappear(animated: Bool) {
         super.viewWillDisappear(animated)
-//        operationQueue.cancelAllOperations()
+        operationQueue.cancelAllOperations()
 //        operationQueue.waitUntilAllOperationsAreFinished()
     }
     
@@ -112,8 +103,7 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
             
             filter.addDependency(loader)
             
-            operationQueue.addOperation(loader)
-            operationQueue.addOperation(filter)
+            operationQueue.addOperations([loader, filter], waitUntilFinished: false)
         }
 
         return cell
@@ -149,6 +139,7 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
                 self.refreshControl?.endRefreshing()
             })
         }
+
         operationQueue.addOperation(newsLoader)
     }
     
@@ -203,7 +194,8 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
     }
     
     func controllerWillChangeContent(controller: NSFetchedResultsController) {
-        tableView.beginUpdates()
+        tableView.beginUpdates() 
+        
     }
     
     func controller(controller: NSFetchedResultsController, didChangeObject anObject: AnyObject, atIndexPath indexPath: NSIndexPath?, forChangeType type: NSFetchedResultsChangeType, newIndexPath: NSIndexPath?) {

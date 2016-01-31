@@ -78,7 +78,11 @@ class BackgroundDataWorker {
             print("private context has changes")
             do {
                 try privateContext.save()
-                NSNotificationCenter.defaultCenter().postNotificationName("PrivateContextSaved", object: nil)
+                NSNotificationCenter.defaultCenter()
+                    .postNotificationName(NSManagedObjectContextObjectsDidChangeNotification,
+                        object: nil)
+//                NSManagedObjectContextObjectsDidChangeNotification
+//                "PrivateContextSaved"
             } catch let error as NSError {
                 print("Could not save: \(error), \(error.userInfo)")
             }
@@ -91,7 +95,7 @@ class BackgroundDataWorker {
         fetchRequest.predicate = NSPredicate(format: "title == %@", title)
         fetchRequest.fetchLimit = 1
         fetchRequest.entity = entityDescription
-        
+
         let fetchResult = try! privateContext.executeFetchRequest(fetchRequest)
         
         if fetchResult.count == 0 {
