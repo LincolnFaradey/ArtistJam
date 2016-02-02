@@ -81,8 +81,6 @@ class BackgroundDataWorker {
                 NSNotificationCenter.defaultCenter()
                     .postNotificationName(NSManagedObjectContextObjectsDidChangeNotification,
                         object: nil)
-//                NSManagedObjectContextObjectsDidChangeNotification
-//                "PrivateContextSaved"
             } catch let error as NSError {
                 print("Could not save: \(error), \(error.userInfo)")
             }

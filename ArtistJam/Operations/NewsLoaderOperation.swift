@@ -9,7 +9,6 @@
 import UIKit
 
 class NewsLoaderOperatrion: Operation {
-//    let coreDataStack = (UIApplication.sharedApplication().delegate as! AppDelegate).coreDataStack
     var task: NSURLSessionDataTask?
     
     override func main() {
@@ -24,17 +23,17 @@ class NewsLoaderOperatrion: Operation {
             
             do {
                 let json = try NSJSONSerialization.JSONObjectWithData(data, options: NSJSONReadingOptions.AllowFragments)
-                
+                let dataWorker = BackgroundDataWorker.sharedManager
                 if let news = json["news"] as? [NSDictionary] {
                     print("JSON - \(json)")
                     for dictionary in news {
-                        BackgroundDataWorker.sharedManager.save(dictionary, type: .News)
+                        dataWorker.save(dictionary, type: .News)
                     }
-                    BackgroundDataWorker.sharedManager.saveContext()
+                    dataWorker.saveContext()
                 }
                 self.finish()
-//                NSNotificationCenter.defaultCenter().postNotificationName("NewsContextSaved", object: nil)
-                BackgroundDataWorker.sharedManager.privateContext.reset()
+
+                dataWorker.privateContext.reset()
             } catch let error as NSError {
                 print("Error occured with JSON serialization: \n \(error.userInfo)")
                 self.finish()

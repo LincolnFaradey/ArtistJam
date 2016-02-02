@@ -57,7 +57,10 @@ class DownloadOperation: Operation {
         if let task = AWSS3TransferManager.defaultS3TransferManager().download(s3Request) {
 
             task.continueWithBlock({ [unowned self] (task: AWSTask!) -> AnyObject! in
-                dispatch_semaphore_signal(semaphore)
+                defer {
+                    dispatch_semaphore_signal(semaphore)
+                }
+                
                 guard !self.cancelled else {
                     return nil;
                 }

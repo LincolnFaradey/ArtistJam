@@ -13,18 +13,19 @@ import CoreGraphics
 let ADDRESS = "https://www.artistjam.net/"
 
 func createAuthRequest(route route: Route, json: NSDictionary) -> NSURLRequest? {
-    print("Route: \(route.url())")
-    let request = NSMutableURLRequest(URL: route.url(), cachePolicy: NSURLRequestCachePolicy.UseProtocolCachePolicy, timeoutInterval: 60)
-    request.HTTPMethod = "POST"
-    request.setValue("application/json", forHTTPHeaderField: "content-type")
+    let urlComponents = NSURLComponents()
+    urlComponents.scheme = Route.scheme()
+    urlComponents.host = Route.host()
+    urlComponents.path = route.path()
     
-    do {
-        request.HTTPBody = try NSJSONSerialization.dataWithJSONObject(json, options: NSJSONWritingOptions.PrettyPrinted)
-        return request
-    } catch let error as NSError {
-        print("cannot serialize: \(error.userInfo)")
-        return nil
+    var items: [NSURLQueryItem] = []
+
+    for (key, value) in json {
+        items.append(NSURLQueryItem(name: key as! String, value: String(value)))
     }
+    urlComponents.queryItems = items
+    print("Request url = \(urlComponents.URL!)")
+    return NSURLRequest(URL: urlComponents.URL!)
 }
 
 func handleError(title: String, message: String, okAction: ((UIAlertAction)->Void)?) {

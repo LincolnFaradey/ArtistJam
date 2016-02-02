@@ -53,37 +53,6 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
         NSNotificationCenter.defaultCenter().removeObserver(self)
     }
     
-    func keyboardWillShow(sender: NSNotification) {
-        guard let userInfo = sender.userInfo as NSDictionary? else {
-            return
-        }
-        
-        if let rect = userInfo[UIKeyboardFrameBeginUserInfoKey]?.CGRectValue {
-            UIView.animateWithDuration(0.4, animations: { () -> Void in
-                self.toolbarConstraint.constant = rect.height
-                self.view.layoutIfNeeded()
-            })
-        }
-        
-    }
-    
-    func keyboardWillHide(sender: NSNotification) {
-        UIView.animateWithDuration(0.3) { _ in
-            self.toolbarConstraint.constant = 0
-            self.view.layoutIfNeeded()
-        }
-    }
-    
-    override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
-        resignFirstResponder()
-    }
-    
-    override func resignFirstResponder() -> Bool {
-        super.resignFirstResponder()
-        self.descriptionTextView.resignFirstResponder()
-        self.titleTextField.resignFirstResponder()
-        return true
-    }
     
     //MARK: - IBActions
     @IBAction func setDescription(sender: UIBarButtonItem) {
@@ -123,11 +92,11 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
             "description": details,
             "image_link": imageLink
         ]
-
+        
         let news = BackgroundDataWorker.sharedManager.save(postDic, type: .News) as! News
         news.imageData?.imageDataWith(self.image!)
 //        news.imageData?.thumbnailDataWith(self.image!)
-        
+        BackgroundDataWorker.sharedManager.saveContext()
         return news
     }
     
@@ -135,9 +104,12 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
         if !isReadyToPost() {
             return
         }
-        
+        let activityIndicator = UIActivityIndicatorView()
+        activityIndicator.center = self.view.center
+        self.view.addSubview(activityIndicator)
+        activityIndicator.startAnimating()
+        self.view.userInteractionEnabled = false
         let news = addNews()
-        print("id: \(news.objectID)")
         
         let AWSUploadOperation = UploadOperation(image: self.image!, link: fileLink())
         let postUpload = PostUploadOperation(post: news)
@@ -149,9 +121,9 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
         
         postUpload.completionBlock = {
             print("Upload success")
-            dispatch_async(dispatch_get_main_queue(), {
+            dispatch_async(dispatch_get_main_queue(), { [unowned self] in
+                activityIndicator.stopAnimating()
                 self.navigationController?.popToRootViewControllerAnimated(true)
-                self.coreDataStack.saveContext()
             })
         }
         
@@ -165,6 +137,7 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
         return "\(ownerName)/\(correctFolderName(titleTextField.text!)!)/\(correctFolderName(strDate)!).png"
     }
     
+    
     //MARK: - UIImagePickerControllerDelegate
     func imagePickerController(picker: UIImagePickerController, didFinishPickingImage image: UIImage, editingInfo: [String : AnyObject]?) {
         let img = editingInfo![UIImagePickerControllerOriginalImage] as! UIImage
@@ -177,6 +150,40 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
     
     func imagePickerControllerDidCancel(picker: UIImagePickerController) {
         picker.dismissViewControllerAnimated(true, completion: nil)
+    }
+    
+    
+    //MARK: Keyboard and touches
+    func keyboardWillShow(sender: NSNotification) {
+        guard let userInfo = sender.userInfo as NSDictionary? else {
+            return
+        }
+        
+        if let rect = userInfo[UIKeyboardFrameBeginUserInfoKey]?.CGRectValue {
+            UIView.animateWithDuration(0.4, animations: { () -> Void in
+                self.toolbarConstraint.constant = rect.height
+                self.view.layoutIfNeeded()
+            })
+        }
+        
+    }
+    
+    func keyboardWillHide(sender: NSNotification) {
+        UIView.animateWithDuration(0.3) { _ in
+            self.toolbarConstraint.constant = 0
+            self.view.layoutIfNeeded()
+        }
+    }
+    
+    override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
+        resignFirstResponder()
+    }
+    
+    override func resignFirstResponder() -> Bool {
+        super.resignFirstResponder()
+        self.descriptionTextView.resignFirstResponder()
+        self.titleTextField.resignFirstResponder()
+        return true
     }
     
 }

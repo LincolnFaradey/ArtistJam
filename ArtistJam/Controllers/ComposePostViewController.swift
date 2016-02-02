@@ -13,6 +13,7 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     
     let coreDataStack = CoreDataStack()
     let operationQueue = NSOperationQueue()
+    let activityIndicator = UIActivityIndicatorView()
     
     @IBOutlet weak var titleTextField: UITextField!
     @IBOutlet weak var descriptionTextView: UITextView!
@@ -45,6 +46,10 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     override func viewDidLoad() {
         super.viewDidLoad()
         self.dataPicker.minimumDate = NSDate()
+        self.view.userInteractionEnabled = false
+        
+        activityIndicator.center = self.view.center
+        self.view.addSubview(activityIndicator)
     }
     
     override func viewWillAppear(animated: Bool) {
@@ -152,6 +157,9 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
         ]
         
         let event = BackgroundDataWorker.sharedManager.save(eventDic, type: .Event) as! Event
+        event.imageData?.imageDataWith(self.image)
+        BackgroundDataWorker.sharedManager.saveContext()
+        
         return event
     }
     
@@ -160,6 +168,7 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
             return
         }
         
+        activityIndicator.startAnimating()
         let event = addEvent()
         print("id: \(event.objectID)")
         
@@ -173,9 +182,9 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
         
         postUpload.completionBlock = {
             print("Upload success")
-            dispatch_async(dispatch_get_main_queue(), {
+            dispatch_async(dispatch_get_main_queue(), { [unowned self] in
+                self.activityIndicator.stopAnimating()
                 self.navigationController?.popToRootViewControllerAnimated(true)
-                self.coreDataStack.saveContext()
             })
         }
         

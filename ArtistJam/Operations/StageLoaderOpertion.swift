@@ -9,8 +9,6 @@
 import UIKit
 import CoreData
 
-
-
 class StageLoaderOpertion: Operation {
     private let url: NSURL
     private var task: NSURLSessionTask?

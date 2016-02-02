@@ -28,6 +28,29 @@ enum Route {
             return baseURL.URLByAppendingPathComponent("/feed/news/\(addr)")
         }
     }
+    
+    static func scheme() -> String {
+        return "https"
+    }
+    
+    static func host() -> String {
+        return "www.artistjam.net"
+    }
+    
+    func path() -> String {
+        switch self {
+        case .SignIn:
+            return "/auth/signin"
+        case .SignUp:
+            return "/auth/signup"
+        case .Logout:
+            return "/auth/logout"
+        case .Stage(let category):
+            return "/stage/\(category)"
+        case .News(let addr):
+            return "/feed/news/\(addr)"
+        }
+    }
 }
 
 class AuthOperation: Operation {
@@ -42,7 +65,8 @@ class AuthOperation: Operation {
     }
     
     override func main() {
-        self.task = NSURLSession.sharedSession().dataTaskWithRequest(request, completionHandler: { (data: NSData?, response: NSURLResponse?, error: NSError?) -> Void in
+        self.task = NSURLSession.sharedSession().dataTaskWithRequest(request, completionHandler: {(data: NSData?, response: NSURLResponse?, error: NSError?) -> Void in
+            
             if error != nil {
                 print(error?.userInfo)
                 self.cancel()
