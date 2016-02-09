@@ -18,9 +18,9 @@ class PostUploadOperation: Operation {
         print("post upload began")
         let request: NSURLRequest?
         if post is Event {
-            request = createPostEventRequest(route: "stage/event/new", json: eventJSONWithPost())
+            request = createPostEventRequestWith(.Stage("event/new"), json: eventJSONWithPost())
         } else {
-            request = createPostEventRequest(route: "feed/news/new", json: newsJSONWithPost())
+            request = createPostEventRequestWith(.News("new"), json: newsJSONWithPost())
         }
         
         task = NSURLSession.sharedSession().dataTaskWithRequest(request!) { (data: NSData?, _, error: NSError?) -> Void in
@@ -84,9 +84,8 @@ class PostUploadOperation: Operation {
         return NSDictionary(dictionary: dictionary)
     }
     
-    func createPostEventRequest(route route: String, json: NSDictionary) -> NSURLRequest? {
-        let loginURL = NSURL(string: ADDRESS + "/" + route)
-        let request = NSMutableURLRequest(URL: loginURL!, cachePolicy: NSURLRequestCachePolicy.UseProtocolCachePolicy, timeoutInterval: 60)
+    func createPostEventRequestWith(route: Route, json: NSDictionary) -> NSURLRequest? {
+        let request = NSMutableURLRequest(URL: route.url(), cachePolicy: NSURLRequestCachePolicy.UseProtocolCachePolicy, timeoutInterval: 60)
         request.HTTPMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         

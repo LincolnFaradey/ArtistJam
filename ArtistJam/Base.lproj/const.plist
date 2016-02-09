@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>base_url</key>
+	<string>https://www.artistjam.net/</string>
+	<key>bucket</key>
+	<string>ajs3</string>
+	<key>pool_id</key>
+	<string>eu-west-1:da1d6cdf-4cf6-480c-ad14-8cdec1357a20</string>
+</dict>
+</plist>

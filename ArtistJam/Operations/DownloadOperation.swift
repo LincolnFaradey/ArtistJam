@@ -22,7 +22,7 @@ class DownloadOperation: Operation {
     
     lazy var s3Request: AWSS3TransferManagerDownloadRequest = {
         var request = AWSS3TransferManagerDownloadRequest()
-        request.bucket = BUCKET
+        request.bucket = bucket()
         request.key = self.imageLink
         request.downloadingFileURL = NSURL(fileURLWithPath: self.tmpImagePath)
         

@@ -12,6 +12,11 @@
 import Foundation
 import CoreData
 
+enum Role: String {
+    case Fan = "Fan"
+    case Artist = "Artist"
+}
+
 extension Artist {
 
     @NSManaged var avatar: NSData?

@@ -39,7 +39,7 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
     override func viewDidLoad() {
         super.viewDidLoad()
         self.tableView.rowHeight = 210
-        addGradientBackground(self)
+        self.addGradientBackground()
         self.refreshControl?.tintColor = UIColor.blackColor()
         self.refreshControl?.layer.zPosition = 1
         
@@ -172,10 +172,10 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
         let url: NSURL
         if liked {
             news.likes = NSNumber(int: likes - 1)
-            url = NSURL(string: "\(ADDRESS)/news/unlike/\(news.webID!.stringValue)")!
+            url = Route.Unlike(news.webID!.integerValue).url()
         } else {
             news.likes = NSNumber(int: likes + 1)
-            url = NSURL(string: "\(ADDRESS)/news/like/\(news.webID!.stringValue)")!
+            url = Route.Like(news.webID!.integerValue).url()
             
         }
         print("URL - \(url)")

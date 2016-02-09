@@ -210,7 +210,7 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
         let img = editingInfo![UIImagePickerControllerOriginalImage] as! UIImage
         let rect = (editingInfo![UIImagePickerControllerCropRect] as! NSValue).CGRectValue()
         
-        self.image = imageByCropping(img, rect: rect)
+        self.image = img.imageByCroppingTo(rect)
         
         picker.dismissViewControllerAnimated(true, completion: nil)
     }

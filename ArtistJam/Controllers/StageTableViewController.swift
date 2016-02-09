@@ -53,7 +53,7 @@ class StageTableViewController: UITableViewController, PostTableViewDelegate, NS
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        addGradientBackground(self)
+        self.addGradientBackground()
         
         self.tableView.rowHeight = 210
         

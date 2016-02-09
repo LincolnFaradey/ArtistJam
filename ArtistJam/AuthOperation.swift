@@ -6,52 +6,6 @@
 //  Copyright © 2015 Andrei Nechaev. All rights reserved.
 //
 
-let baseURL = NSURL(string: "https://www.artistjam.net/")!
-enum Route {
-    case SignIn
-    case SignUp
-    case Logout
-    case Stage(String)
-    case News(String)
-    
-    func url() -> NSURL {
-        switch self {
-        case .SignIn:
-            return baseURL.URLByAppendingPathComponent("/auth/signin")
-        case .SignUp:
-            return baseURL.URLByAppendingPathComponent("/auth/signup")
-        case .Logout:
-            return baseURL.URLByAppendingPathComponent("/auth/logout")
-        case .Stage(let category):
-            return baseURL.URLByAppendingPathComponent("/stage/\(category)")
-        case .News(let addr):
-            return baseURL.URLByAppendingPathComponent("/feed/news/\(addr)")
-        }
-    }
-    
-    static func scheme() -> String {
-        return "https"
-    }
-    
-    static func host() -> String {
-        return "www.artistjam.net"
-    }
-    
-    func path() -> String {
-        switch self {
-        case .SignIn:
-            return "/auth/signin"
-        case .SignUp:
-            return "/auth/signup"
-        case .Logout:
-            return "/auth/logout"
-        case .Stage(let category):
-            return "/stage/\(category)"
-        case .News(let addr):
-            return "/feed/news/\(addr)"
-        }
-    }
-}
 
 class AuthOperation: Operation {
     private let request: NSURLRequest

@@ -16,7 +16,7 @@ class UploadOperation: Operation {
     lazy var s3UploadRequest: AWSS3TransferManagerUploadRequest = {
         let request = AWSS3TransferManagerUploadRequest()
 
-        request.bucket = BUCKET
+        request.bucket = bucket()
         request.uploadProgress = {[unowned self] (sent: Int64, total: Int64, expected: Int64) in
             let percent = Int8(Double(total) / Double(expected) * 100)
             self.uploadProgress!(percent)

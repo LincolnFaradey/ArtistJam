@@ -41,6 +41,7 @@ class BackgroundDataWorker {
             
             newPost = (type == .Event) ? self.findOrCreatePostWith(title, type: .Event)
                                         : self.findOrCreatePostWith(title, type: .News)
+            
             guard let post = newPost else {
                 print("Couldn't create post")
                 return
