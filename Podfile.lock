@@ -1,9 +1,9 @@
 PODS:
-  - AWSCognito (2.3.3):
-    - AWSCore (= 2.3.3)
-  - AWSCore (2.3.3)
-  - AWSS3 (2.3.3):
-    - AWSCore (= 2.3.3)
+  - AWSCognito (2.3.4):
+    - AWSCore (= 2.3.4)
+  - AWSCore (2.3.4)
+  - AWSS3 (2.3.4):
+    - AWSCore (= 2.3.4)
 
 DEPENDENCIES:
   - AWSCognito
@@ -11,8 +11,8 @@ DEPENDENCIES:
   - AWSS3
 
 SPEC CHECKSUMS:
-  AWSCognito: 3c1209a21a7661c079a59e04f5b5dab4f794561c
-  AWSCore: b12704516e21ed34cfe7547e07ab945b079d1f56
-  AWSS3: 675f59e0c338e61441117f03018187b9deb359c4
+  AWSCognito: 8ea24f9261967a108131106585c832ab48f12540
+  AWSCore: 926eb781459b58d4319b0fa4f5f3bffb6b28b112
+  AWSS3: f49fde807d6cfc373f1bdb8150c9770d470ca2fd
 
 COCOAPODS: 0.39.0

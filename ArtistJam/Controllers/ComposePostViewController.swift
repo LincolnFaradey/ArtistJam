@@ -46,7 +46,6 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     override func viewDidLoad() {
         super.viewDidLoad()
         self.dataPicker.minimumDate = NSDate()
-        self.view.userInteractionEnabled = false
         
         activityIndicator.center = self.view.center
         self.view.addSubview(activityIndicator)
@@ -169,6 +168,7 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
         }
         
         activityIndicator.startAnimating()
+        self.view.userInteractionEnabled = false
         let event = addEvent()
         print("id: \(event.objectID)")
         
@@ -186,6 +186,10 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
                 self.activityIndicator.stopAnimating()
                 self.navigationController?.popToRootViewControllerAnimated(true)
             })
+        }
+        postUpload.cancellationBlock = {
+            print("cancelled")
+            self.view.userInteractionEnabled = false
         }
         
         operationQueue.addOperation(AWSUploadOperation!)

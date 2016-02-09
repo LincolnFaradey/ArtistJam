@@ -38,8 +38,6 @@ func handleError(title: String, message: String, okAction: ((UIAlertAction)->Voi
 }
 
 
-
-
 func correctFolderName(name: String) -> String? {
     do {
         let regEx = try NSRegularExpression(pattern: "[^a-zA-Z0-9_]+", options: NSRegularExpressionOptions.CaseInsensitive)
