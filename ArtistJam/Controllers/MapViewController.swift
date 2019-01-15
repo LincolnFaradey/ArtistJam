@@ -25,23 +25,23 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
         locationManager.requestAlwaysAuthorization()
         locationManager.startUpdatingLocation()
         
-        let longPress = UILongPressGestureRecognizer(target: self, action: "longPressOnMap:")
+        let longPress = UILongPressGestureRecognizer(target: self, action: Selector(("longPressOnMap:")))
         longPress.delegate = self
         mapView.addGestureRecognizer(longPress)
     }
     
-    func mapView(mapView: MKMapView, didUpdateUserLocation userLocation: MKUserLocation) {
-        let region = MKCoordinateRegion(center: userLocation.coordinate, span: MKCoordinateSpanMake(0.25, 0.25))
+    func mapView(_ mapView: MKMapView, didUpdate userLocation: MKUserLocation) {
+        let region = MKCoordinateRegion(center: userLocation.coordinate, span: MKCoordinateSpan(latitudeDelta: 0.25, longitudeDelta: 0.25))
         
         mapView.setRegion(region, animated: true)
     }
     
     
     func longPressOnMap(sender: UIGestureRecognizer) {
-        if sender.state == .Ended {
+        if sender.state == .ended {
             mapView.removeAnnotations(mapView.annotations)
-            let point = sender.locationInView(mapView)
-            acceptedCoordinates = mapView.convertPoint(point, toCoordinateFromView: mapView)
+            let point = sender.location(in: mapView)
+            acceptedCoordinates = mapView.convert(point, toCoordinateFrom: mapView)
             let annotation = MKPointAnnotation()
             annotation.coordinate = acceptedCoordinates!
             mapView.addAnnotation(annotation)
@@ -49,8 +49,8 @@ class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerD
     }
     
     @IBAction func acceptLocation(sender: UIButton) {
-        delegate?.controller(self, didAcceptCoordinate: acceptedCoordinates!)
-        navigationController?.popViewControllerAnimated(true)
+        delegate?.controller(controller: self, didAcceptCoordinate: acceptedCoordinates!)
+        navigationController?.popViewController(animated: true)
     }
     
 }

@@ -8,22 +8,26 @@
 
 import UIKit
 
-class NewsLoaderOperatrion: Operation {
-    var task: NSURLSessionDataTask?
+class NewsLoaderOperatrion: OperationWrapper {
+    var task: URLSessionDataTask?
     
     override func main() {
         
-        UIApplication.sharedApplication().networkActivityIndicatorVisible = true
+        UIApplication.shared.isNetworkActivityIndicatorVisible = true
         
-        task = NSURLSession.sharedSession().dataTaskWithURL(Route.News("all").url(), completionHandler: { [unowned self] (data: NSData?, response: NSURLResponse?, error: NSError?) -> Void in
-            UIApplication.sharedApplication().networkActivityIndicatorVisible = false
+        task = URLSession.shared.dataTask(with: Route.News("all").url()!, completionHandler: { [unowned self] (data: Data?, response: URLResponse?, error: Error?) -> Void in
+            UIApplication.shared.isNetworkActivityIndicatorVisible = false
             guard let data = data else {
                 return
             }
             
             do {
-                let json = try NSJSONSerialization.JSONObjectWithData(data, options: NSJSONReadingOptions.AllowFragments)
+                let decoder = JSONDecoder()
+                let news = try! decoder.decode([News].self, from: data)
+                
+                let json = try JSONSerialization.jsonObject(with: data, options: JSONSerialization.ReadingOptions.allowFragments)
                 let dataWorker = BackgroundDataWorker.sharedManager
+                
                 if let news = json["news"] as? [NSDictionary] {
                     print("JSON - \(json)")
                     for dictionary in news {

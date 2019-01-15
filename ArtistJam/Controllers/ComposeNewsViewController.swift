@@ -9,7 +9,7 @@
 class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
     let coreDataStack = CoreDataStack()
-    let operationQueue = NSOperationQueue()
+    let operationQueue = OperationQueue()
     
     @IBOutlet weak var titleTextField: UITextField!
     @IBOutlet weak var descriptionTextView: UITextView!
@@ -17,7 +17,7 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
     
     lazy var imagePicker: UIImagePickerController = {
         let ip = UIImagePickerController()
-        ip.sourceType = .PhotoLibrary
+        ip.sourceType = .photoLibrary
         ip.allowsEditing = true
         ip.setEditing(true, animated: true)
         ip.delegate = self
@@ -26,9 +26,9 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
         }()
     
     lazy var strDate: String = {
-            let dateFormatter = NSDateFormatter()
+            let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "dd-MM-yyyy-HH:mm"
-            let str = dateFormatter.stringFromDate(NSDate())
+        let str = dateFormatter.string(from: Date())
             return str
         }()
     
@@ -40,17 +40,17 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
         super.viewDidLoad()
     }
     
-    override func viewWillAppear(animated: Bool) {
+    override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "keyboardWillShow:", name: UIKeyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: Selector(("keyboardWillShow:")), name: UIResponder.keyboardWillShowNotification, object: nil)
         
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "keyboardWillHide:", name: UIKeyboardWillHideNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: Selector(("keyboardWillHide:")), name: UIResponder.keyboardWillHideNotification, object: nil)
     }
     
-    override func viewWillDisappear(animated: Bool) {
+    override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        resignFirstResponder()
-        NSNotificationCenter.defaultCenter().removeObserver(self)
+        let _ = resignFirstResponder()
+        NotificationCenter.default.removeObserver(self)
     }
     
     
@@ -60,19 +60,19 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
     }
     
     @IBAction func setPhoto(sender: UIBarButtonItem) {
-        if UIImagePickerController.isSourceTypeAvailable(.PhotoLibrary) {
-            presentViewController(imagePicker, animated: true, completion: nil)
+        if UIImagePickerController.isSourceTypeAvailable(.photoLibrary) {
+            present(imagePicker, animated: true, completion: nil)
         }
     }
     
     
     func isReadyToPost() -> Bool {
-        if titleTextField.text!.characters.count < 4 {
-            handleError("Error", message: "Length of the title cannot be less then 4 characters", okAction: nil)
-        } else if descriptionTextView.text!.characters.count < 4 {
-            handleError("Error", message: "Length of the description cannot be less then 4 characters", okAction: nil)
+        if titleTextField.text!.count < 4 {
+            handleError(title: "Error", message: "Length of the title cannot be less then 4 characters", okAction: nil)
+        } else if descriptionTextView.text!.count < 4 {
+            handleError(title: "Error", message: "Length of the description cannot be less then 4 characters", okAction: nil)
         } else if image == nil {
-            handleError("Error", message: "You didn't add an image to your post", okAction: nil)
+            handleError(title: "Error", message: "You didn't add an image to your post", okAction: nil)
         } else {
             return true
         }
@@ -81,7 +81,7 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
     }
     
     func addNews() -> Post {
-        let username = NSUserDefaults.standardUserDefaults().valueForKey("username") as! String
+        let username = UserDefaults.standard.value(forKey: "username") as! String
         let title = titleTextField.text
         let details = descriptionTextView.text
         let imageLink = fileLink()
@@ -93,8 +93,8 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
             "image_link": imageLink
         ]
         
-        let news = BackgroundDataWorker.sharedManager.save(postDic, type: .News) as! News
-        news.imageData?.imageDataWith(self.image!)
+        let news = BackgroundDataWorker.sharedManager.save(json: postDic as NSDictionary, type: .News) as! News
+        news.imageData?.imageDataWith(image: self.image!)
 //        news.imageData?.thumbnailDataWith(self.image!)
         BackgroundDataWorker.sharedManager.saveContext()
         return news
@@ -108,7 +108,7 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
         activityIndicator.center = self.view.center
         self.view.addSubview(activityIndicator)
         activityIndicator.startAnimating()
-        self.view.userInteractionEnabled = false
+        self.view.isUserInteractionEnabled = false
         let news = addNews()
         
         let AWSUploadOperation = UploadOperation(image: self.image!, link: fileLink())
@@ -121,10 +121,10 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
         
         postUpload.completionBlock = {
             print("Upload success")
-            dispatch_async(dispatch_get_main_queue(), { [unowned self] in
+            DispatchQueue.main.async { [unowned self] in
                 activityIndicator.stopAnimating()
-                self.navigationController?.popToRootViewControllerAnimated(true)
-            })
+                self.navigationController?.popToRootViewController(animated: true)
+            }
         }
         
         operationQueue.addOperation(AWSUploadOperation)
@@ -132,24 +132,24 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
     }
     
     func fileLink() -> String {
-        let ownerName = NSUserDefaults.standardUserDefaults().valueForKey("username") as! String
+        let ownerName = UserDefaults.standard.value(forKey: "username") as! String
         
-        return "\(ownerName)/\(correctFolderName(titleTextField.text!)!)/\(correctFolderName(strDate)!).png"
+        return "\(ownerName)/\(correctFolderName(name: titleTextField.text!)!)/\(correctFolderName(name: strDate)!).png"
     }
     
     
     //MARK: - UIImagePickerControllerDelegate
     func imagePickerController(picker: UIImagePickerController, didFinishPickingImage image: UIImage, editingInfo: [String : AnyObject]?) {
-        let img = editingInfo![UIImagePickerControllerOriginalImage] as! UIImage
-        let rect = (editingInfo![UIImagePickerControllerCropRect] as! NSValue).CGRectValue()
+        let img = editingInfo![UIImagePickerController.InfoKey.originalImage.rawValue] as! UIImage
+        let rect = (editingInfo![UIImagePickerController.InfoKey.cropRect.rawValue] as! NSValue).cgRectValue
         
-        self.image = img.imageByCroppingTo(rect)
+        self.image = img.imageByCroppingTo(rect: rect)
         
-        picker.dismissViewControllerAnimated(true, completion: nil)
+        picker.dismiss(animated: true, completion: nil)
     }
     
-    func imagePickerControllerDidCancel(picker: UIImagePickerController) {
-        picker.dismissViewControllerAnimated(true, completion: nil)
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true, completion: nil)
     }
     
     
@@ -159,8 +159,8 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
             return
         }
         
-        if let rect = userInfo[UIKeyboardFrameBeginUserInfoKey]?.CGRectValue {
-            UIView.animateWithDuration(0.4, animations: { () -> Void in
+        if let rect = (userInfo[UIResponder.keyboardFrameBeginUserInfoKey] as AnyObject).cgRectValue {
+            UIView.animate(withDuration: 0.4, animations: { () -> Void in
                 self.toolbarConstraint.constant = rect.height
                 self.view.layoutIfNeeded()
             })
@@ -169,14 +169,14 @@ class ComposeNewsViewController: UIViewController, UIImagePickerControllerDelega
     }
     
     func keyboardWillHide(sender: NSNotification) {
-        UIView.animateWithDuration(0.3) { _ in
+        UIView.animate(withDuration: 0.3) {
             self.toolbarConstraint.constant = 0
             self.view.layoutIfNeeded()
         }
     }
     
-    override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
-        resignFirstResponder()
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        let _ = resignFirstResponder()
     }
     
     override func resignFirstResponder() -> Bool {

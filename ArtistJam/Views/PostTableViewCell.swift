@@ -9,18 +9,18 @@
 import UIKit
 
 protocol PostTableViewDelegate {
-    func facebookButtonWasPressed(sender: UIButton, index: NSIndexPath)
-    func twitterButtonWasPressed(sender: UIButton, index: NSIndexPath)
-    func addButtonWasPressed(sender: UIButton, index: NSIndexPath)
+    func facebookButtonWasPressed(sender: UIButton, index: IndexPath)
+    func twitterButtonWasPressed(sender: UIButton, index: IndexPath)
+    func addButtonWasPressed(sender: UIButton, index: IndexPath)
     
-    func likeButtonWasPressed(sender: UIButton, index: NSIndexPath)
+    func likeButtonWasPressed(sender: UIButton, index: IndexPath)
 }
 
 class PostTableViewCell: UITableViewCell {
 
     var delegate: PostTableViewDelegate?
 
-    var indexPath: NSIndexPath?
+    var indexPath: IndexPath?
     
     var loading = false
     
@@ -40,7 +40,7 @@ class PostTableViewCell: UITableViewCell {
         // Initialization code
     }
 
-    override func setSelected(selected: Bool, animated: Bool) {
+    override func setSelected(_ selected: Bool, animated: Bool) {
         super.setSelected(selected, animated: animated)
 
         // Configure the view for the selected state
@@ -55,19 +55,19 @@ class PostTableViewCell: UITableViewCell {
 //MARK: - Actions
     
     @IBAction func addButtonAction(sender: UIButton) {
-        delegate?.addButtonWasPressed(sender, index: self.indexPath!)
+        delegate?.addButtonWasPressed(sender: sender, index: self.indexPath!)
     }
     
     @IBAction func twitterButtonAction(sender: UIButton) {
-        delegate?.twitterButtonWasPressed(sender, index: self.indexPath!)
+        delegate?.twitterButtonWasPressed(sender: sender, index: self.indexPath!)
     }
     
     @IBAction func facebookButtonAction(sender: UIButton) {
-        delegate?.facebookButtonWasPressed(sender, index: self.indexPath!)
+        delegate?.facebookButtonWasPressed(sender: sender, index: self.indexPath!)
     }
 
     @IBAction func likeButtonAction(sender: UIButton) {
-        delegate?.likeButtonWasPressed(sender, index: self.indexPath!)
+        delegate?.likeButtonWasPressed(sender: sender, index: self.indexPath!)
     }
 }
 
@@ -84,16 +84,16 @@ extension PostTableViewCell {
         }
 
         imageFilter.completionBlock = {
-            post.imageData?.imageDataWith(loader.downloadedImage)
-            post.imageData?.thumbnailDataWith(imageFilter.outImage)
+            post.imageData?.imageDataWith(image: loader.downloadedImage)
+            post.imageData?.thumbnailDataWith(image: imageFilter.outImage)
             BackgroundDataWorker.sharedManager.saveContext()
             
-            dispatch_async(dispatch_get_main_queue(), {[unowned self] in
+            DispatchQueue.main.async { [unowned self] in
                 if let img = post.imageData?.thumbnailImage() {
                     self.stageImageView.image = img
                 }
                 self.loading = false
-            })
+            }
         }
         
         loader.cancellationBlock = { [unowned self] in self.loading = false }

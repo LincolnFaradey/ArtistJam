@@ -12,7 +12,7 @@ import CoreLocation
 class ComposePostViewController: UIViewController, MapViewControllerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
     let coreDataStack = CoreDataStack()
-    let operationQueue = NSOperationQueue()
+    let operationQueue = OperationQueue()
     let activityIndicator = UIActivityIndicatorView()
     
     @IBOutlet weak var titleTextField: UITextField!
@@ -22,7 +22,7 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     
     lazy var imagePicker: UIImagePickerController = {
         let ip = UIImagePickerController()
-        ip.sourceType = .PhotoLibrary
+        ip.sourceType = .photoLibrary
         ip.allowsEditing = true
         ip.setEditing(true, animated: true)
         ip.delegate = self
@@ -34,8 +34,8 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     var image: UIImage?
     
     var strDate: String?
-    lazy var dateFormatter: NSDateFormatter = {
-        let dateFormatter = NSDateFormatter()
+    lazy var dateFormatter: DateFormatter = {
+        let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "LL dd, yyyy HH:mm"
         
         return dateFormatter
@@ -45,23 +45,23 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.dataPicker.minimumDate = NSDate()
+        self.dataPicker.minimumDate = Date()
         
         activityIndicator.center = self.view.center
         self.view.addSubview(activityIndicator)
     }
     
-    override func viewWillAppear(animated: Bool) {
+    override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "keyboardWillShow:", name: UIKeyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: Selector(("keyboardWillShow:")), name: UIResponder.keyboardWillShowNotification, object: nil)
         
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "keyboardWillHide:", name: UIKeyboardWillHideNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: Selector(("keyboardWillHide:")), name: UIResponder.keyboardWillHideNotification, object: nil)
     }
     
-    override func viewWillDisappear(animated: Bool) {
+    override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        resignFirstResponder()
-        NSNotificationCenter.defaultCenter().removeObserver(self)
+        let _ = resignFirstResponder()
+        NotificationCenter.default.removeObserver(self)
     }
     
     func keyboardWillShow(sender: NSNotification) {
@@ -69,8 +69,8 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
             return
         }
         
-        if let rect = userInfo[UIKeyboardFrameBeginUserInfoKey]?.CGRectValue {
-            UIView.animateWithDuration(0.4, animations: { () -> Void in
+        if let rect = (userInfo[UIResponder.keyboardFrameBeginUserInfoKey] as AnyObject).cgRectValue {
+            UIView.animate(withDuration: 0.4, animations: { () -> Void in
                 self.toolbarConstraint.constant = rect.height
                 self.view.layoutIfNeeded()
             })
@@ -79,14 +79,14 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     }
     
     func keyboardWillHide(sender: NSNotification) {
-        UIView.animateWithDuration(0.3) { _ in
+        UIView.animate(withDuration: 0.3) {
             self.toolbarConstraint.constant = 0
             self.view.layoutIfNeeded()
         }
     }
     
-    override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
-        resignFirstResponder()
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        let _ = resignFirstResponder()
     }
     
     override func resignFirstResponder() -> Bool {
@@ -102,39 +102,39 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     }
     
     @IBAction func setDate(sender: UIBarButtonItem) {
-        resignFirstResponder()
-        UIView.animateWithDuration(0.3) { _ in
+        let _ = resignFirstResponder()
+        UIView.animate(withDuration: 0.3) {
             self.toolbarConstraint.constant = self.dataPicker.frame.height
             self.view.layoutIfNeeded()
         }
     }
     
     @IBAction func datePickerChanged(sender: UIDatePicker) {
-        strDate = dateFormatter.stringFromDate(sender.date)
+        strDate = dateFormatter.string(from: sender.date)
     }
     
     @IBAction func setLocation(sender: UIBarButtonItem) {
-        performSegueWithIdentifier("createToMapSegue", sender: self)
+        performSegue(withIdentifier: "createToMapSegue", sender: self)
     }
     
     @IBAction func setPhoto(sender: UIBarButtonItem) {
-        if UIImagePickerController.isSourceTypeAvailable(.PhotoLibrary) {
-            presentViewController(imagePicker, animated: true, completion: nil)
+        if UIImagePickerController.isSourceTypeAvailable(.photoLibrary) {
+            present(imagePicker, animated: true, completion: nil)
         }
     }
     
     
     func isReadyToPost() -> Bool {
-        if titleTextField.text!.characters.count < 4 {
-            handleError("Error", message: "Length of the title cannot be less than 4 characters", okAction: nil)
-        } else if descriptionTextView.text!.characters.count < 4 {
-            handleError("Error", message: "Length of the description cannot be less than 4 characters", okAction: nil)
+        if titleTextField.text!.count < 4 {
+            handleError(title: "Error", message: "Length of the title cannot be less than 4 characters", okAction: nil)
+        } else if descriptionTextView.text!.count < 4 {
+            handleError(title: "Error", message: "Length of the description cannot be less than 4 characters", okAction: nil)
         } else if image == nil {
-            handleError("Error", message: "You didn't add an image to your post", okAction: nil)
+            handleError(title: "Error", message: "You didn't add an image to your post", okAction: nil)
         } else if strDate == nil {
-            handleError("Error", message: "You didn't add a date to your post", okAction: nil)
+            handleError(title: "Error", message: "You didn't add a date to your post", okAction: nil)
         } else if locationCoordinates == nil {
-            handleError("Error", message: "You didn't add a location to your post", okAction: nil)
+            handleError(title: "Error", message: "You didn't add a location to your post", okAction: nil)
         } else {
             return true
         }
@@ -143,20 +143,20 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     }
     
     func addEvent() -> Post {
-        let username = NSUserDefaults.standardUserDefaults().valueForKey("username") as! String
+        let username = UserDefaults.standard.value(forKey: "username") as! String
 
         let eventDic: [String: AnyObject] = [
-            "username": username,
-            "title": titleTextField.text!,
-            "description": descriptionTextView.text!,
-            "image_link": fileLink(),
-            "when": strDate!,
-            "lat": locationCoordinates!.latitude,
-            "lon": locationCoordinates!.longitude
+            "username": username as AnyObject,
+            "title": titleTextField.text! as AnyObject,
+            "description": descriptionTextView.text! as AnyObject,
+            "image_link": fileLink() as AnyObject,
+            "when": strDate! as AnyObject,
+            "lat": locationCoordinates!.latitude as AnyObject,
+            "lon": locationCoordinates!.longitude as AnyObject
         ]
         
-        let event = BackgroundDataWorker.sharedManager.save(eventDic, type: .Event) as! Event
-        event.imageData?.imageDataWith(self.image)
+        let event = BackgroundDataWorker.sharedManager.save(json: eventDic as NSDictionary, type: .Event) as! Event
+        event.imageData?.imageDataWith(image: self.image)
         BackgroundDataWorker.sharedManager.saveContext()
         
         return event
@@ -168,7 +168,7 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
         }
         
         activityIndicator.startAnimating()
-        self.view.userInteractionEnabled = false
+        self.view.isUserInteractionEnabled = false
         let event = addEvent()
         print("id: \(event.objectID)")
         
@@ -182,14 +182,14 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
         
         postUpload.completionBlock = {
             print("Upload success")
-            dispatch_async(dispatch_get_main_queue(), { [unowned self] in
+            DispatchQueue.main.async {[unowned self] in
                 self.activityIndicator.stopAnimating()
-                self.navigationController?.popToRootViewControllerAnimated(true)
-            })
+                self.navigationController?.popToRootViewController(animated: true)
+            }
         }
         postUpload.cancellationBlock = {
             print("cancelled")
-            self.view.userInteractionEnabled = false
+            self.view.isUserInteractionEnabled = false
         }
         
         operationQueue.addOperation(AWSUploadOperation!)
@@ -197,35 +197,35 @@ class ComposePostViewController: UIViewController, MapViewControllerDelegate, UI
     }
     
     func fileLink() -> String {
-        let ownerName = NSUserDefaults.standardUserDefaults().valueForKey("username") as! String
+        let ownerName = UserDefaults.standard.value(forKey: "username") as! String
         
-        return "\(ownerName)/\(correctFolderName(titleTextField.text!)!)/\(correctFolderName(strDate!)!).png"
+        return "\(ownerName)/\(correctFolderName(name: titleTextField.text!)!)/\(correctFolderName(name: strDate!)!).png"
     }
     
-    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "createToMapSegue" {
-            let vc = segue.destinationViewController as! MapViewController
+            let vc = segue.destination as! MapViewController
             vc.delegate = self
         }
     }
     
     //MARK: - UIImagePickerControllerDelegate
     func imagePickerController(picker: UIImagePickerController, didFinishPickingImage image: UIImage, editingInfo: [String : AnyObject]?) {
-        let img = editingInfo![UIImagePickerControllerOriginalImage] as! UIImage
-        let rect = (editingInfo![UIImagePickerControllerCropRect] as! NSValue).CGRectValue()
+        let img = editingInfo![UIImagePickerController.InfoKey.originalImage.rawValue] as! UIImage
+        let rect = (editingInfo![UIImagePickerController.InfoKey.cropRect.rawValue] as! NSValue).cgRectValue
         
-        self.image = img.imageByCroppingTo(rect)
+        self.image = img.imageByCroppingTo(rect: rect)
         
-        picker.dismissViewControllerAnimated(true, completion: nil)
+        picker.dismiss(animated: true, completion: nil)
     }
     
-    func imagePickerControllerDidCancel(picker: UIImagePickerController) {
-        picker.dismissViewControllerAnimated(true, completion: nil)
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true, completion: nil)
     }
     
     //MARK: - MapViewControllerDelegate
     func controller(controller: MapViewController, didAcceptCoordinate coordinates: CLLocationCoordinate2D) {
         locationCoordinates = coordinates
-        print("Coordinates \(locationCoordinates)")
+        print("Coordinates \(String(describing: locationCoordinates))")
     }
 }

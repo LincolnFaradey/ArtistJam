@@ -14,18 +14,18 @@ enum PostType: String {
 class BackgroundDataWorker {
     static let sharedManager = BackgroundDataWorker()
     
-    let coreDataStack = (UIApplication.sharedApplication().delegate as! AppDelegate).coreDataStack
+    let coreDataStack = (UIApplication.shared.delegate as! AppDelegate).coreDataStack
     let privateContext: NSManagedObjectContext
-    lazy var dateFormatter:NSDateFormatter = {
-            let df = NSDateFormatter()
+    lazy var dateFormatter:DateFormatter = {
+            let df = DateFormatter()
             df.dateFormat = "LL dd, yyyy HH:mm"
             return df
         }()
     
     private init() {
 //        privateContext = coreDataStack.context
-        privateContext = NSManagedObjectContext(concurrencyType: .PrivateQueueConcurrencyType)
-        self.privateContext.parentContext = coreDataStack.context
+        privateContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        self.privateContext.parent = coreDataStack.context
     }
     
     func save(json: NSDictionary, type: PostType) -> Post? {
@@ -36,11 +36,11 @@ class BackgroundDataWorker {
         let imageLink = json["image_link"] as? String
         
         var newPost: Post?
-        privateContext.performBlockAndWait { [unowned self] in
-            let artist = self.findOrCreateArtist(username)
+        privateContext.performAndWait { [unowned self] in
+            let artist = self.findOrCreateArtist(username: username)
             
-            newPost = (type == .Event) ? self.findOrCreatePostWith(title, type: .Event)
-                                        : self.findOrCreatePostWith(title, type: .News)
+            newPost = (type == .Event) ? self.findOrCreatePostWith(title: title, type: .Event)
+                : self.findOrCreatePostWith(title: title, type: .News)
             
             guard let post = newPost else {
                 print("Couldn't create post")
@@ -57,7 +57,7 @@ class BackgroundDataWorker {
                 let event = post as! Event
                 event.latitude = json["lat"] as? NSNumber ?? 0
                 event.longitude = json["long"] as? NSNumber ?? 0
-                event.date = self.dateFormatter.dateFromString(json["when"] as! String)
+                event.date = self.dateFormatter.date(from: json["when"] as! String)! as NSDate
             }else {
                 let news = post as! News
                 news.likes = json["likes"] as? NSNumber ?? 0
@@ -79,8 +79,8 @@ class BackgroundDataWorker {
             print("private context has changes")
             do {
                 try privateContext.save()
-                NSNotificationCenter.defaultCenter()
-                    .postNotificationName(NSManagedObjectContextObjectsDidChangeNotification,
+                NotificationCenter.default
+                    .post(name: NSNotification.Name.NSManagedObjectContextObjectsDidChange,
                         object: nil)
             } catch let error as NSError {
                 print("Could not save: \(error), \(error.userInfo)")
@@ -89,17 +89,17 @@ class BackgroundDataWorker {
     }
     
     func findOrCreatePostWith(title: String, type: PostType) -> Post {
-        let entityDescription = NSEntityDescription.entityForName(type.rawValue, inManagedObjectContext: privateContext)
-        let fetchRequest = NSFetchRequest(entityName: type.rawValue)
+        let entityDescription = NSEntityDescription.entity(forEntityName: type.rawValue, in: privateContext)
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: type.rawValue)
         fetchRequest.predicate = NSPredicate(format: "title == %@", title)
         fetchRequest.fetchLimit = 1
         fetchRequest.entity = entityDescription
 
-        let fetchResult = try! privateContext.executeFetchRequest(fetchRequest)
+        let fetchResult = try! privateContext.fetch(fetchRequest)
         
         if fetchResult.count == 0 {
-            let post = NSEntityDescription.insertNewObjectForEntityForName(type.rawValue, inManagedObjectContext: privateContext) as! Post
-            let image = NSEntityDescription.insertNewObjectForEntityForName("Image", inManagedObjectContext: privateContext) as! Image
+            let post = NSEntityDescription.insertNewObject(forEntityName: type.rawValue, into: privateContext) as! Post
+            let image = NSEntityDescription.insertNewObject(forEntityName: "Image", into: privateContext) as! Image
             
             post.title = title
             post.imageData = image
@@ -111,22 +111,22 @@ class BackgroundDataWorker {
     }
     
     func findOrCreateArtist(username: String) -> Artist! {
-        let artistEntity = NSEntityDescription.entityForName("Artist", inManagedObjectContext: privateContext)
-        let fetchRequest = NSFetchRequest(entityName: "Artist")
+        let artistEntity = NSEntityDescription.entity(forEntityName: "Artist", in: privateContext)
+        let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Artist")
         fetchRequest.predicate = NSPredicate(format: "username == %@", username)
         fetchRequest.fetchLimit = 1
         fetchRequest.entity = artistEntity
         
-        let fetchResult = try! privateContext.executeFetchRequest(fetchRequest)
+        let fetchResult = try! privateContext.fetch(fetchRequest)
         
         if fetchResult.count == 0 {
             let artist: Artist!
-            artist = NSEntityDescription.insertNewObjectForEntityForName("Artist", inManagedObjectContext: privateContext) as! Artist
+            artist = NSEntityDescription.insertNewObject(forEntityName: "Artist", into: privateContext) as? Artist
             artist.username = username
             artist.role = Role.Artist.rawValue
             return artist
         }
         
-        return fetchResult.first as! Artist
+        return fetchResult.first as? Artist
     }
 }

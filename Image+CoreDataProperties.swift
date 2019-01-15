@@ -14,8 +14,8 @@ import CoreData
 
 extension Image {
 
-    @NSManaged var imageData: NSData?
-    @NSManaged var thumbnailData: NSData?
+    @NSManaged var imageData: Data?
+    @NSManaged var thumbnailData: Data?
     @NSManaged var post: Post?
 
     
@@ -31,7 +31,7 @@ extension Image {
         guard let img = image else {
             return
         }
-        self.imageData = UIImagePNGRepresentation(img)
+        self.imageData = img.pngData()
     }
     
     func thumbnailImage() -> UIImage? {
@@ -45,8 +45,8 @@ extension Image {
         guard let img = image else {
             return
         }
-        let scaledSize = 160 / UIScreen.mainScreen().scale
-        let thumImg = img.thumbnailWithSize(CGSizeMake(scaledSize, scaledSize))
-        self.thumbnailData = UIImagePNGRepresentation(thumImg)
+        let scaledSize = 160 / UIScreen.main.scale
+        let thumImg = img.thumbnailWithSize(size: CGSize.init(width: scaledSize, height: scaledSize))
+        self.thumbnailData = thumImg.pngData()
     }
 }

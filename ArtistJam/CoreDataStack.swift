@@ -17,26 +17,26 @@ class CoreDataStack {
     var store: NSPersistentStore?
 
     init() {
-        let bundle = NSBundle.mainBundle()
-        let modelURL = bundle.URLForResource("Model", withExtension:"momd")
-        model = NSManagedObjectModel(contentsOfURL: modelURL!)!
+        let bundle = Bundle.main
+        let modelURL = bundle.url(forResource: "Model", withExtension:"momd")
+        model = NSManagedObjectModel(contentsOf: modelURL!)!
 
         psc = NSPersistentStoreCoordinator(managedObjectModel:model)
 
-        context = NSManagedObjectContext(concurrencyType: .MainQueueConcurrencyType)
+        context = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
         context.persistentStoreCoordinator = psc
 
         let documentsURL = CoreDataStack.applicationDocumentsDirectory()
 
-        let storeURL = documentsURL.URLByAppendingPathComponent("Artist_Jam")
+        let storeURL = documentsURL.appendingPathComponent("Artist_Jam")
         print(storeURL)
         let options = [NSMigratePersistentStoresAutomaticallyOption: true]
 
         var error: NSError? = nil
         do {
-            store = try psc.addPersistentStoreWithType(NSSQLiteStoreType,
-                configuration: nil,
-                URL: storeURL,
+            store = try psc.addPersistentStore(ofType: NSSQLiteStoreType,
+                                               configurationName: nil,
+                                               at: storeURL,
                 options: options)
         } catch let error1 as NSError {
               error = error1
@@ -44,7 +44,7 @@ class CoreDataStack {
         }
 
         if store == nil {
-          print("Error adding persistent store: \(error)")
+            print("Error adding persistent store: \(String(describing: error))")
           abort()
         }
     }
@@ -60,12 +60,12 @@ class CoreDataStack {
         }
     }
   
-    class func applicationDocumentsDirectory() -> NSURL {
+    class func applicationDocumentsDirectory() -> URL {
 
-        let fileManager = NSFileManager.defaultManager()
+        let fileManager = FileManager.default
 
-        let urls = fileManager.URLsForDirectory(.DocumentDirectory,
-        inDomains: .UserDomainMask) as Array<NSURL>
+        let urls = fileManager.urls(for: .documentDirectory,
+                                    in: .userDomainMask)
 
         return urls[0]
     }

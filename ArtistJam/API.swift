@@ -10,7 +10,7 @@
 //static NSString *POOL_ID = @"eu-west-1:da1d6cdf-4cf6-480c-ad14-8cdec1357a20";
 //static NSString *UNAUTH_ROLE = @"arn:aws:iam::017510864679:role/Cognito_ajcognitoUnauth_Role";
 
-let baseURL = NSURL(string: "https://www.artistjam.net/")!
+let baseURL = URL(string: "https://www.artistjam.net/")!
 enum Route {
     case SignIn
     case SignUp
@@ -20,22 +20,22 @@ enum Route {
     case Like(Int)
     case Unlike(Int)
     
-    func url() -> NSURL {
+    func url() -> URL? {
         switch self {
             case .SignIn:
-                return baseURL.URLByAppendingPathComponent("/auth/signin")
+                return baseURL.appendingPathComponent("/auth/signin")
             case .SignUp:
-                return baseURL.URLByAppendingPathComponent("/auth/signup")
+                return baseURL.appendingPathComponent("/auth/signup")
             case .Logout:
-                return baseURL.URLByAppendingPathComponent("/auth/logout")
+                return baseURL.appendingPathComponent("/auth/logout")
             case .Stage(let addr):
-                return baseURL.URLByAppendingPathComponent("/stage/\(addr)")
+                return baseURL.appendingPathComponent("/stage/\(addr)")
             case .News(let addr):
-                return baseURL.URLByAppendingPathComponent("/feed/news/\(addr)")
+                return baseURL.appendingPathComponent("/feed/news/\(addr)")
             case .Like(let id):
-                return baseURL.URLByAppendingPathComponent("/news/like/\(id)")
+                return baseURL.appendingPathComponent("/news/like/\(id)")
             case .Unlike(let id):
-                return baseURL.URLByAppendingPathComponent("/news/unlike/\(id)")
+                return baseURL.appendingPathComponent("/news/unlike/\(id)")
         }
     }
     
@@ -68,7 +68,7 @@ enum Route {
 }
 
 func constPlist() -> [String: String] {
-    let bundle = NSBundle.mainBundle().pathForResource("const", ofType: "plist")
+    let bundle = Bundle.main.path(forResource: "const", ofType: "plist")
     let dict = NSDictionary(contentsOfFile: bundle!)
     return dict as! [String: String]
 }

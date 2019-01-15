@@ -9,9 +9,9 @@
 import UIKit
 
 class ViewController: UIViewController {
-    var operationQueue: NSOperationQueue {
+    var operationQueue: OperationQueue {
             get {
-                let queue = NSOperationQueue()
+                let queue = OperationQueue()
                 queue.maxConcurrentOperationCount = 1
                 return queue
             }
@@ -28,18 +28,18 @@ class ViewController: UIViewController {
 
     }
     
-    override func viewWillAppear(animated: Bool) {
-        self.navigationController?.navigationBarHidden = true
+    override func viewWillAppear(_ animated: Bool) {
+        self.navigationController?.isNavigationBarHidden = true
         
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "keyboardWillBeShown:", name: UIKeyboardWillShowNotification, object: nil)
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "keyboardWillBeHidden:", name: UIKeyboardWillHideNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: Selector(("keyboardWillBeShown:")), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: Selector(("keyboardWillBeHidden:")), name: UIResponder.keyboardWillHideNotification, object: nil)
         
         
     }
     
-    override func viewWillDisappear(animated: Bool) {
+    override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        NSNotificationCenter.defaultCenter().removeObserver(self)
+        NotificationCenter.default.removeObserver(self)
     }
 
     override func didReceiveMemoryWarning() {
@@ -48,22 +48,24 @@ class ViewController: UIViewController {
     }
 
     @IBAction func loginButtonWasPressed(sender: UIButton) {
-        sender.userInteractionEnabled = false
+        sender.isUserInteractionEnabled = false
         let dictionary = [
             "username": loginTextField.text!,
             "password": passwordTextField.text!.MD5()
         ]
-        NSUserDefaults.standardUserDefaults().setValue(dictionary["username"], forKey: "username")
-        let authOperation = AuthOperation(json: dictionary, route: .SignIn)
+        UserDefaults.standard.setValue(dictionary["username"], forKey: "username")
+        let authOperation = AuthOperation(json: dictionary as NSDictionary, route: .SignIn)
         authOperation.completionBlock = {
-            sender.userInteractionEnabled = true
-            dispatch_async(dispatch_get_main_queue(), { [unowned self] in
-                self.performSegueWithIdentifier("loginToMain", sender: self)
-            })
+            sender.isUserInteractionEnabled = true
+            
+            DispatchQueue.main.async { [unowned self] in
+                self.performSegue(withIdentifier: "loginToMain", sender: self)
+            }
         }
+        
         authOperation.cancellationBlock = {
             print("Canceled")
-            sender.userInteractionEnabled = true
+            sender.isUserInteractionEnabled = true
         }
         
         operationQueue.addOperation(authOperation)
@@ -75,11 +77,11 @@ class ViewController: UIViewController {
             return
         }
 
-        if let rect = userInfo[UIKeyboardFrameBeginUserInfoKey]?.CGRectValue {
+        if let rect = (userInfo[UIResponder.keyboardFrameBeginUserInfoKey] as AnyObject).cgRectValue {
             let kbSize = rect.height
 
-            UIView.animateWithDuration(0.3, animations: { [unowned self] in
-                self.horizontalCenterConstraint.priority = UILayoutPriorityDefaultLow
+            UIView.animate(withDuration: 0.3, animations: { [unowned self] in
+                self.horizontalCenterConstraint.priority = UILayoutPriority.defaultLow
                 self.buttomTrailingConstraint.constant = kbSize
                 self.view.layoutIfNeeded()
             })
@@ -87,13 +89,13 @@ class ViewController: UIViewController {
     }
     
     func keyboardWillBeHidden(sender: NSNotification) {
-        UIView.animateWithDuration(0.3, animations: { [unowned self] in
-            self.horizontalCenterConstraint.priority = UILayoutPriorityDefaultHigh
+        UIView.animate(withDuration: 0.3, animations: { [unowned self] in
+            self.horizontalCenterConstraint.priority = UILayoutPriority.defaultHigh
             self.view.layoutIfNeeded()
         })
     }
     
-    override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         self.view.endEditing(true)
     }
 }

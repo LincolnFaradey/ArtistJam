@@ -9,9 +9,9 @@
 import UIKit
 import CoreData
 
-class StageLoaderOpertion: Operation {
-    private let url: NSURL
-    private var task: NSURLSessionTask?
+class StageLoaderOpertion: OperationWrapper {
+    private let url: URL
+    private var task: URLSessionTask?
     
     enum Category: String {
         case Today = "today"
@@ -19,7 +19,7 @@ class StageLoaderOpertion: Operation {
         case New = "new"
         
         func predicate() -> NSPredicate {
-            let today = NSDate()
+            let today = Date()
             switch self {
             case .Today:
                 return NSPredicate(format: "date < %@ and date > %@", today + 1.day, today - 1.day)
@@ -32,26 +32,26 @@ class StageLoaderOpertion: Operation {
     }
     
     init(category: Category) {
-        self.url = Route.Stage(category.rawValue).url()
+        self.url = Route.Stage(category.rawValue).url()!
     }
     
     override func main() {
-        UIApplication.sharedApplication().networkActivityIndicatorVisible = true
-        task = NSURLSession.sharedSession().dataTaskWithURL(url, completionHandler: {[unowned self] (data: NSData?, response: NSURLResponse?, error: NSError?) -> Void in
-            UIApplication.sharedApplication().networkActivityIndicatorVisible = false
+        UIApplication.shared.isNetworkActivityIndicatorVisible = true
+        task = URLSession.shared.dataTask(with: url, completionHandler: {[unowned self] (data: Data?, response: URLResponse?, error: Error?) -> Void in
+            UIApplication.shared.isNetworkActivityIndicatorVisible = false
             guard let data = data else {
                 self.cancel()
                 return
             }
             
             do {
-                let json = try NSJSONSerialization.JSONObjectWithData(data, options: .AllowFragments) as! NSDictionary
+                let json = try JSONSerialization.jsonObject(with: data, options: .allowFragments) as! NSDictionary
                 print(json)
                 for (_, v) in json {
                     if let events = v as? [NSDictionary] {
                         for dictionary in events {
                             print("JSON - \(dictionary)")
-                            BackgroundDataWorker.sharedManager.save(dictionary, type: .Event)
+                            let _ = BackgroundDataWorker.sharedManager.save(json: dictionary, type: .Event)
                         }
                         BackgroundDataWorker.sharedManager.saveContext()
                     }

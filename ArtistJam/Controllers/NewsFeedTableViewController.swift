@@ -10,11 +10,11 @@ import UIKit
 
 class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate , NSFetchedResultsControllerDelegate {
 
-    let coreDataStack = (UIApplication.sharedApplication().delegate as! AppDelegate).coreDataStack
+    let coreDataStack = (UIApplication.shared.delegate as! AppDelegate).coreDataStack
     var selectedPost: Post!
     
-    lazy var fetchedResultController: NSFetchedResultsController = {
-            let fetchRequesst = NSFetchRequest(entityName: "News")
+    lazy var fetchedResultController: NSFetchedResultsController = { () -> NSFetchedResultsController<NSFetchRequestResult> in
+        let fetchRequesst = NSFetchRequest<NSFetchRequestResult>(entityName: "News")
             let descriptor = NSSortDescriptor(key: "title", ascending: false)
             
             fetchRequesst.sortDescriptors = [descriptor]
@@ -30,8 +30,8 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
             return fetchedController
         }()
     
-    lazy var operationQueue: NSOperationQueue = {
-            let queue = NSOperationQueue()
+    lazy var operationQueue: OperationQueue = {
+        let queue = OperationQueue()
             queue.maxConcurrentOperationCount = 2
             return queue
     }()
@@ -40,7 +40,7 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
         super.viewDidLoad()
         self.tableView.rowHeight = 210
         self.addGradientBackground()
-        self.refreshControl?.tintColor = UIColor.blackColor()
+        self.refreshControl?.tintColor = UIColor.black
         self.refreshControl?.layer.zPosition = 1
         
         //        self.tableView.rowHeight = UITableViewAutomaticDimension
@@ -55,46 +55,46 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
         
     }
     
-    override func viewWillAppear(animated: Bool) {
+    override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         update()
     }
     
-    override func viewWillDisappear(animated: Bool) {
+    override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         operationQueue.cancelAllOperations()
 //        operationQueue.waitUntilAllOperationsAreFinished()
     }
     
-    override func numberOfSectionsInTableView(tableView: UITableView) -> Int {
+    override func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
     
-    override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         let sectionInfo = fetchedResultController.sections![section] as NSFetchedResultsSectionInfo
         
         return sectionInfo.numberOfObjects
     }
     
     let identifier = "newsCell"
-    override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCellWithIdentifier(identifier) as! PostTableViewCell
-        configureCell(cell, indexPath: indexPath)
-        return cell
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: identifier) as! PostTableViewCell
+        return configureCell(cell: cell, indexPath: indexPath)
     }
+
     
-    func configureCell(cell: PostTableViewCell, indexPath: NSIndexPath) -> PostTableViewCell {
-        let news = fetchedResultController.objectAtIndexPath(indexPath) as! News
+    func configureCell(cell: PostTableViewCell, indexPath: IndexPath) -> PostTableViewCell {
+        let news = fetchedResultController.object(at: indexPath) as! News
         
         cell.titleLabel.text = news.title
         cell.descriptionLabel.text = news.details
         cell.likesCounterLabel.text = news.likes?.stringValue
         cell.stageImageView.image = UIImage(named: "placeholder")
         if let _ = news.liked {} else {
-            news.liked = NSNumber(bool: false)
+            news.liked = NSNumber(value: false)
         }
         
-        cell.likeButton.setImage(UIImage(named: news.liked!.boolValue ? "likeFilled" : "likeEmpty"), forState: .Normal)
+        cell.likeButton.setImage(UIImage(named: news.liked!.boolValue ? "likeFilled" : "likeEmpty"), for: .normal)
         
         if let image = news.imageData?.thumbnailImage() {
             cell.stageImageView.image = image
@@ -109,20 +109,20 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
         return cell
     }
     
-    override func tableView(tableView: UITableView, willDisplayCell cell: UITableViewCell, forRowAtIndexPath indexPath: NSIndexPath) {
+    override func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         let cell = cell as! PostTableViewCell
         cell.delegate = self
         cell.indexPath = indexPath
     }
     
-    override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
-        self.selectedPost = fetchedResultController.objectAtIndexPath(indexPath) as! News
-        self.performSegueWithIdentifier("newsToDetails", sender: self)
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        self.selectedPost = fetchedResultController.object(at: indexPath) as! News
+        self.performSegue(withIdentifier: "newsToDetails", sender: self)
     }
     
-    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "newsToDetails" {
-            let vc = segue.destinationViewController as! DetailsViewController
+            let vc = segue.destination as! DetailsViewController
             vc.post = selectedPost
         }
     }
@@ -135,82 +135,83 @@ class NewsFeedTableViewController: UITableViewController, PostTableViewDelegate 
         operationQueue.cancelAllOperations()
         let newsLoader = NewsLoaderOperatrion()
         newsLoader.completionBlock = {
-            dispatch_async(dispatch_get_main_queue(), {
+            DispatchQueue.main.async {
                 self.refreshControl?.endRefreshing()
-            })
+            }
         }
 
         operationQueue.addOperation(newsLoader)
     }
     
     //MARK: ANStageTableViewDelegate
-    func addButtonWasPressed(sender: UIButton, index: NSIndexPath) {
-        UIView.transitionWithView(sender, duration: 0.5, options: UIViewAnimationOptions.TransitionFlipFromTop, animations: { () -> Void in
-            sender.setImage(UIImage(named: "done"), forState: .Normal)
+    func addButtonWasPressed(sender: UIButton, index: IndexPath) {
+        UIView.transition(with: sender, duration: 0.5, options: UIView.AnimationOptions.transitionFlipFromTop, animations: { () -> Void in
+            sender.setImage(UIImage(named: "done"), for: .normal)
             }, completion: nil)
     }
     
-    func facebookButtonWasPressed(sender: UIButton, index: NSIndexPath) {
+    func facebookButtonWasPressed(sender: UIButton, index: IndexPath) {
         
     }
     
-    func twitterButtonWasPressed(sender: UIButton, index: NSIndexPath) {
+    func twitterButtonWasPressed(sender: UIButton, index: IndexPath) {
         
     }
     
     // TODO: create operation for performance reason
-    var task: NSURLSessionDataTask?
-    func likeButtonWasPressed(sender: UIButton, index: NSIndexPath) {
+    var task: URLSessionDataTask?
+    func likeButtonWasPressed(sender: UIButton, index: IndexPath) {
         
-        let news = fetchedResultController.objectAtIndexPath(index) as! News
+        let news = fetchedResultController.object(at: index) as! News
         
         let liked = news.liked!.boolValue
         let likes = news.likes!.intValue
         
         task?.cancel()
         
-        let url: NSURL
+        let url: URL
         if liked {
-            news.likes = NSNumber(int: likes - 1)
-            url = Route.Unlike(news.webID!.integerValue).url()
+            news.likes = NSNumber(value: likes - 1)
+            url = Route.Unlike(news.webID!.intValue).url()!
         } else {
-            news.likes = NSNumber(int: likes + 1)
-            url = Route.Like(news.webID!.integerValue).url()
+            news.likes = NSNumber(value: likes + 1)
+            url = Route.Like(news.webID!.intValue).url()!
             
         }
         print("URL - \(url)")
-        task = NSURLSession.sharedSession().dataTaskWithURL(url, completionHandler: { (data, response, error) -> Void in
-            let json = try! NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments)
+        task = URLSession.shared.dataTask(with: url, completionHandler: { (data: Data?, response: URLResponse?, error: Error?) -> Void in
+            let json = try! JSONSerialization.jsonObject(with: data!, options: JSONSerialization.ReadingOptions.allowFragments)
             print("liked response - \(json)")
         })
         task?.resume()
         
-        news.liked = NSNumber(bool: !liked)
+        news.liked = NSNumber(value: !liked)
         self.coreDataStack.saveContext()
-        UIView.transitionWithView(sender, duration: 0.1, options: UIViewAnimationOptions.TransitionFlipFromRight, animations: { _ in
         
-            sender.setImage(UIImage(named: news.liked!.boolValue ? "likeFilled" : "likeEmpty"), forState: .Normal)
-            }, completion: nil)
+        UIView.transition(with: sender, duration: 0.1, options: UIView.AnimationOptions.transitionFlipFromRight,
+                          animations: {
+                            sender.setImage(UIImage(named: news.liked!.boolValue ? "likeFilled" : "likeEmpty"), for: .normal)
+                        }, completion: nil)
     }
     
-    func controllerWillChangeContent(controller: NSFetchedResultsController) {
+    func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
         tableView.beginUpdates() 
         
     }
     
-    func controller(controller: NSFetchedResultsController, didChangeObject anObject: AnyObject, atIndexPath indexPath: NSIndexPath?, forChangeType type: NSFetchedResultsChangeType, newIndexPath: NSIndexPath?) {
+    func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
         
         switch type {
-            case .Update:
-                tableView.reloadRowsAtIndexPaths([indexPath!], withRowAnimation: UITableViewRowAnimation.Automatic)
-            case .Insert:
-                tableView.insertRowsAtIndexPaths([newIndexPath!], withRowAnimation: UITableViewRowAnimation.Automatic)
+        case .update:
+            tableView.reloadRows(at: [indexPath! as IndexPath], with: UITableView.RowAnimation.automatic)
+        case .insert:
+            tableView.insertRows(at: [newIndexPath!], with: UITableView.RowAnimation.automatic)
             default:
                 return
         }
     }
     
-    func controllerDidChangeContent(controller: NSFetchedResultsController) {
+    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
         tableView.endUpdates()
     }
 }

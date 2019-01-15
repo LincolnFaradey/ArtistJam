@@ -7,36 +7,35 @@
 //
 
 
-class AuthOperation: Operation {
-    private let request: NSURLRequest
+class AuthOperation: OperationWrapper {
+    private let request: URLRequest
     
-    private var task: NSURLSessionDataTask?
-    private var jsonData: NSData?
+    private var task: URLSessionDataTask?
+    private var jsonData: Data?
     
     init(json: NSDictionary, route: Route) {
         print("JSON Auth: \(json)")
         self.request = createAuthRequest(route: route, json: json)!
     }
     
-    override func main() {
-        self.task = NSURLSession.sharedSession().dataTaskWithRequest(request, completionHandler: {(data: NSData?, response: NSURLResponse?, error: NSError?) -> Void in
+    override func start() {
+        self.task = URLSession.shared.dataTask(with: request, completionHandler: {(data: Data?, response: URLResponse?, error: Error?) -> Void in
             
             if error != nil {
-                print(error?.userInfo)
+                print(error!._userInfo!)
                 self.cancel()
                 return
             }
             
             let json: NSDictionary
             do {
-                json = try NSJSONSerialization.JSONObjectWithData(data!, options: NSJSONReadingOptions.AllowFragments) as! NSDictionary
+                json = try JSONSerialization.jsonObject(with: data!, options: JSONSerialization.ReadingOptions.allowFragments) as! NSDictionary
                 
                 let message = json["message"] as? String
                 print("success \(json)")
                 if message == "success" {
-
                     self.finish()
-                }else {
+                } else {
                     self.cancel()
                 }
             } catch let error as NSError {

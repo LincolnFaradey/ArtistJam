@@ -9,7 +9,7 @@
 import UIKit
 import QuartzCore
 
-class ImageFilterOperation: Operation {
+class ImageFilterOperation: OperationWrapper {
     var outImage: UIImage?
     var image: UIImage?
     
@@ -20,7 +20,7 @@ class ImageFilterOperation: Operation {
             self.cancel()
             return
         }
-        if cancelled {
+        if isCancelled {
             return
         }
         self.outImage = monochromeImage()
@@ -29,13 +29,13 @@ class ImageFilterOperation: Operation {
     }
     
     func monochromeImage() -> UIImage {
-        let img = CIImage(CGImage: self.image!.thumbnailWithSize(CGSizeMake(150, 150)).CGImage!)
+        let img = CIImage(cgImage: self.image!.thumbnailWithSize(size: CGSize.init(width: 150, height: 150)).cgImage!)
 
         let filter = CIFilter(name: "CIPhotoEffectTonal")!
         
         filter.setValue(img, forKey: kCIInputImageKey)
         
-        return imageWith(filter.outputImage!)
+        return imageWith(CIImage: filter.outputImage!)
     }
 
     typealias myCIImage = CIImage
@@ -44,9 +44,9 @@ class ImageFilterOperation: Operation {
         
         let context = CIContext(options: nil)
         
-        let imageRef = context.createCGImage(CIImage, fromRect: rect)
+        let imageRef = context.createCGImage(CIImage, from: rect)
 
-        let image = UIImage(CGImage: imageRef)
+        let image = UIImage(cgImage: imageRef!)
         
         return image
     }

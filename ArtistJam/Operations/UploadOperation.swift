@@ -8,36 +8,35 @@
 
 import UIKit
 
-class UploadOperation: Operation {
+class UploadOperation: OperationWrapper {
     var uploadProgress: progressBlock?
-    let imageData: NSData
+    let imageData: Data
     let imageLink: String
     
     lazy var s3UploadRequest: AWSS3TransferManagerUploadRequest = {
         let request = AWSS3TransferManagerUploadRequest()
 
-        request.bucket = bucket()
-        request.uploadProgress = {[unowned self] (sent: Int64, total: Int64, expected: Int64) in
+        request?.bucket = bucket()
+        request?.uploadProgress = {[unowned self] (sent: Int64, total: Int64, expected: Int64) in
             let percent = Int8(Double(total) / Double(expected) * 100)
             self.uploadProgress!(percent)
         }
         
-        request.contentLength = self.imageData.length
-        request.body = saveData(self.imageData)
-        request.key = self.imageLink
-        request.contentType = "image/png"
+        request?.contentLength = self.imageData.count as NSNumber
+        request?.body = saveData(data: self.imageData) as URL
+        request?.key = self.imageLink
+        request?.contentType = "image/png"
         
-        return request
+        return request!
     }()
     
     init(image: UIImage, link: String) {
-        self.imageData = UIImagePNGRepresentation(image.thumbnailWithSize(CGSizeMake(600, 600)))!
+        self.imageData = image.thumbnailWithSize(size: CGSize.init(width: 600, height: 600)).pngData()!
         self.imageLink = link
     }
     
-    override func main() {
-        
-        guard !self.cancelled else {
+    override func start() {
+        guard !self.isCancelled else {
             self.cancel()
             return
         }
@@ -46,16 +45,16 @@ class UploadOperation: Operation {
             print("Accept: \(percents)")
         }
         
-        UIApplication.sharedApplication().networkActivityIndicatorVisible = true
-        if let task = AWSS3TransferManager.defaultS3TransferManager().upload(s3UploadRequest) {
-            task.continueWithSuccessBlock { [unowned self] (task: AWSTask!) -> AnyObject! in
-                UIApplication.sharedApplication().networkActivityIndicatorVisible = false
-                self.finish()
-                return nil
+        UIApplication.shared.isNetworkActivityIndicatorVisible = true
+        AWSS3TransferUtility.default().uploadData(imageData, bucket: bucket(), key: imageLink, contentType: "image/png", expression: AWSS3TransferUtilityUploadExpression.init()) { (task, err) in
+            
+            UIApplication.shared.isNetworkActivityIndicatorVisible = false
+            if err != nil {
+                self.cancel()
             }
             
-        }else {
-            UIApplication.sharedApplication().networkActivityIndicatorVisible = false
+            self.finish()
+            
         }
     }
     
@@ -65,21 +64,23 @@ class UploadOperation: Operation {
     }
     
     func fileKey(post: Post) -> String {
-        return "\(post.artist!.username)/\(correctFolderName(post.title!)!)/\(todayStringName()).png"
+        return "\(String(describing: post.artist!.username))/\(correctFolderName(name: post.title!)!)/\(todayStringName()).png"
     }
 }
 
-func saveData(data: NSData) -> NSURL {
+func saveData(data: Data) -> URL {
     let path = NSTemporaryDirectory() + todayStringName()
-    data.writeToFile(path, atomically: false)
+    let url = URL(fileURLWithPath: path)
     
-    return NSURL(fileURLWithPath: path)
+    try! data.write(to: url, options: Data.WritingOptions.atomicWrite)
+    
+    return url
 }
 
-let dateFormatter = NSDateFormatter()
+let dateFormatter = DateFormatter()
 func todayStringName() -> String {
-    let today = NSDate()
+    let today = Date()
     
     dateFormatter.dateFormat = "MM-dd-yyyy-hh:mm:ssa"
-    return dateFormatter.stringFromDate(today)
+    return dateFormatter.string(from: today)
 }

@@ -9,9 +9,9 @@
 import UIKit
 
 class RegestrationViewController: UIViewController {
-    var operationQueue: NSOperationQueue {
+    var operationQueue: OperationQueue {
         get {
-            let queue = NSOperationQueue()
+            let queue = OperationQueue()
             queue.maxConcurrentOperationCount = 1
             return queue
         }
@@ -31,28 +31,28 @@ class RegestrationViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.navigationController?.navigationBarHidden = false
+        self.navigationController?.isNavigationBarHidden = false
     }
     
-    override func viewWillAppear(animated: Bool) {
+    override func viewWillAppear(_ animated: Bool) {
         self.questionView.alpha = 0.0
         self.authView.alpha = 0.0
-        self.navigationController?.navigationBarHidden = false
-        NSNotificationCenter.defaultCenter().addObserver(self, selector:"keyboardWillBeShown:", name: UIKeyboardWillShowNotification, object: nil)
-        NSNotificationCenter.defaultCenter().addObserver(self, selector:"keyboardWillBeHidden:", name: UIKeyboardWillHideNotification, object: nil)
+        self.navigationController?.isNavigationBarHidden = false
+        NotificationCenter.default.addObserver(self, selector:Selector(("keyboardWillBeShown:")), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector:Selector(("keyboardWillBeHidden:")), name: UIResponder.keyboardWillHideNotification, object: nil)
     }
     
-    override func viewDidAppear(animated: Bool) {
+    override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        UIView.animateWithDuration(0.4) { () -> Void in
+        UIView.animate(withDuration: 0.4) { () -> Void in
             self.questionView.alpha = 1.0
             self.authView.alpha = 0.0
         }
     }
     
-    override func viewWillDisappear(animated: Bool) {
+    override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        NSNotificationCenter.defaultCenter().removeObserver(self)
+        NotificationCenter.default.removeObserver(self)
     }
     
     override func didReceiveMemoryWarning() {
@@ -60,22 +60,22 @@ class RegestrationViewController: UIViewController {
     }
     
     @IBAction func loginButtonWasPressed(sender: UIButton) {
-        sender.userInteractionEnabled = false
+        sender.isUserInteractionEnabled = false
         let dictionary = [
             "role": self.selectedIndex == 0 ? "fan" : "artist",
             "username": self.loginTextField.text!,
             "email": self.emailTextField.text!,
             "password": self.passwordTextField!.text!.MD5()
         ]
-        let authOperation = AuthOperation(json: dictionary, route: Route.SignUp)
+        let authOperation = AuthOperation(json: dictionary as NSDictionary, route: Route.SignUp)
         authOperation.completionBlock = {
-            sender.userInteractionEnabled = true
-            dispatch_async(dispatch_get_main_queue(), { () -> Void in
-                self.navigationController?.popViewControllerAnimated(true)
-            })
+            sender.isUserInteractionEnabled = true
+            DispatchQueue.main.async {
+                self.navigationController?.popViewController(animated: true)
+            }
         }
         authOperation.cancellationBlock = {
-            sender.userInteractionEnabled = true
+            sender.isUserInteractionEnabled = true
         }
         
         self.operationQueue.addOperation(authOperation)
@@ -83,7 +83,7 @@ class RegestrationViewController: UIViewController {
     
     @IBAction func roleChooseButtonWasPressed(sender: UIButton) {
         self.selectedIndex = sender.tag
-        UIView.animateWithDuration(0.4) { () -> Void in
+        UIView.animate(withDuration: 0.4) { () -> Void in
             self.questionView.alpha = 0.0
             self.authView.alpha = 1.0
         }
@@ -93,11 +93,11 @@ class RegestrationViewController: UIViewController {
         guard let userInfo = sender.userInfo as NSDictionary? else {
             return
         }
-        if let rect = userInfo[UIKeyboardFrameBeginUserInfoKey]?.CGRectValue {
+        if let rect = (userInfo[UIResponder.keyboardFrameBeginUserInfoKey] as AnyObject).cgRectValue {
             let kbSize = rect.height
             
-            UIView.animateWithDuration(0.4, animations: { () -> Void in
-                self.horizontalCenterConstraint.priority = 1
+            UIView.animate(withDuration: 0.4, animations: { () -> Void in
+                self.horizontalCenterConstraint.priority = UILayoutPriority(rawValue: 1)
                 self.buttomTrailingConstraint.constant = kbSize
                 self.view.layoutIfNeeded()
             })
@@ -105,13 +105,13 @@ class RegestrationViewController: UIViewController {
     }
     
     func keyboardWillBeHidden(sender: NSNotification) {
-        UIView.animateWithDuration(0.4, animations: { () -> Void in
-            self.horizontalCenterConstraint.priority = UILayoutPriorityDefaultHigh
+        UIView.animate(withDuration: 0.4, animations: { () -> Void in
+            self.horizontalCenterConstraint.priority = UILayoutPriority.defaultHigh
             self.view.layoutIfNeeded()
         })
     }
     
-    override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         self.view.endEditing(true)
     }
 

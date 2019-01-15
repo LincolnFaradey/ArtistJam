@@ -9,7 +9,7 @@
 import Foundation
 import UIKit
 
-class ImageTransformer : NSValueTransformer {
+class ImageTransformer : ValueTransformer {
     
     override class func transformedValueClass() -> AnyClass {
         return NSData.self
@@ -19,20 +19,19 @@ class ImageTransformer : NSValueTransformer {
         return  true
     }
     
-    override func reverseTransformedValue(value: AnyObject?) -> AnyObject? {
+    override func reverseTransformedValue(_ value: Any?) -> Any? {
         if (value == nil) {
             return nil
         }
         
-        return UIImage(data: value as! NSData)
+        return UIImage(data: value as! Data)
     }
     
-    override func transformedValue(value: AnyObject?) -> AnyObject? {
+    override func transformedValue(_ value: Any?) -> Any? {
         guard let image = value as? UIImage else {
             return nil
         }
-        
-        return UIImagePNGRepresentation(image)
+        return image.pngData()
     }
     
 }

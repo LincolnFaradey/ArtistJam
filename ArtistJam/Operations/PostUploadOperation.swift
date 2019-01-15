@@ -6,9 +6,9 @@
 //  Copyright © 2015 Andrei Nechaev. All rights reserved.
 //
 
-class PostUploadOperation: Operation {
+class PostUploadOperation: OperationWrapper {
     var post: Post!
-    var task: NSURLSessionDataTask!
+    var task: URLSessionDataTask!
     
     init(post: Post) {
         self.post = post
@@ -16,23 +16,23 @@ class PostUploadOperation: Operation {
     
     override func main() {
         print("post upload began")
-        let request: NSURLRequest?
+        let request: URLRequest?
         if post is Event {
-            request = createPostEventRequestWith(.Stage("event/new"), json: eventJSONWithPost())
+            request = createPostEventRequestWith(route: .Stage("event/new"), json: eventJSONWithPost())
         } else {
-            request = createPostEventRequestWith(.News("new"), json: newsJSONWithPost())
+            request = createPostEventRequestWith(route: .News("new"), json: newsJSONWithPost())
         }
         
-        task = NSURLSession.sharedSession().dataTaskWithRequest(request!) { (data: NSData?, _, error: NSError?) -> Void in
+        URLSession.shared.dataTask(with: request!) { (data: Data?, _: URLResponse?, error: Error?) in
             if error != nil {
-                print("post upload error: \(error?.userInfo)")
+                print("post upload error: \(String(describing: error?._userInfo))")
                 self.cancel()
                 return
             }
             
             do {
-                let json = try NSJSONSerialization.JSONObjectWithData(data!,
-                    options: NSJSONReadingOptions.AllowFragments) as! NSDictionary
+                let json = try JSONSerialization.jsonObject(with: data!,
+                                                            options: JSONSerialization.ReadingOptions.allowFragments) as! NSDictionary
                 
                 let message = json["message"] as? String
                 print("success \(json)")
@@ -67,9 +67,9 @@ class PostUploadOperation: Operation {
     
     func eventJSONWithPost() -> NSDictionary {
         let event = post as! Event
-        let dateFormatter = NSDateFormatter()
+        let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd-MM-yyyy HH:mm"
-        let date = dateFormatter.stringFromDate(event.date!)
+        let date = dateFormatter.string(from: event.date! as Date)
         
         let dictionary = [
             "title": event.title!,
@@ -79,21 +79,21 @@ class PostUploadOperation: Operation {
             "when": date,
             "lat": event.latitude!,
             "lon": event.longitude!
-        ]
+            ] as [String : Any]
         print("dict: \(dictionary)")
         return NSDictionary(dictionary: dictionary)
     }
     
-    func createPostEventRequestWith(route: Route, json: NSDictionary) -> NSURLRequest? {
-        let request = NSMutableURLRequest(URL: route.url(), cachePolicy: NSURLRequestCachePolicy.UseProtocolCachePolicy, timeoutInterval: 60)
-        request.HTTPMethod = "POST"
+    func createPostEventRequestWith(route: Route, json: NSDictionary) -> URLRequest? {
+        let request = NSMutableURLRequest(url: route.url()!, cachePolicy: NSURLRequest.CachePolicy.useProtocolCachePolicy, timeoutInterval: 60)
+        request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         
         do {
-            request.HTTPBody = try NSJSONSerialization.dataWithJSONObject(json, options: NSJSONWritingOptions.PrettyPrinted)
-            return request
-        } catch let error as NSError {
-            print("cannot serialize: \(error.userInfo)")
+            request.httpBody = try JSONSerialization.data(withJSONObject: json, options: JSONSerialization.WritingOptions.prettyPrinted)
+            return request as URLRequest
+        } catch let error {
+            print("cannot serialize: \(String(describing: error._userInfo))")
             return nil
         }
     }

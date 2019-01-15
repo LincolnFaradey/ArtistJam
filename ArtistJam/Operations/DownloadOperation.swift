@@ -8,30 +8,30 @@
 
 import UIKit
 
-class DownloadOperation: Operation {
+class DownloadOperation: OperationWrapper {
     
     let imageLink: String
     var downloadedImage: UIImage?
     var progress: progressBlock?
     
     private lazy var tmpImagePath: String = {
-            let sArr = self.imageLink.componentsSeparatedByString("/")
+        let sArr = self.imageLink.components(separatedBy: "/")
             let filePath = NSTemporaryDirectory() + sArr.last!
             return filePath
         }()
     
     lazy var s3Request: AWSS3TransferManagerDownloadRequest = {
         var request = AWSS3TransferManagerDownloadRequest()
-        request.bucket = bucket()
-        request.key = self.imageLink
-        request.downloadingFileURL = NSURL(fileURLWithPath: self.tmpImagePath)
+        request?.bucket = bucket()
+        request?.key = self.imageLink
+        request?.downloadingFileURL = URL(fileURLWithPath: self.tmpImagePath)
         
-        request.downloadProgress = { [unowned self] (sent: Int64, total: Int64, expected: Int64) in
+        request?.downloadProgress = { [unowned self] (sent: Int64, total: Int64, expected: Int64) in
             let percent = Int8(Double(total) / Double(expected) * 100)
             self.progress!(percent)
         }
         
-        return request
+        return request!
         }()
 
     
@@ -46,17 +46,16 @@ class DownloadOperation: Operation {
             }
         }
         
-        UIApplication.sharedApplication().networkActivityIndicatorVisible = true
-        if cancelled {
-            print("\(self.name) cancelled")
+        UIApplication.shared.isNetworkActivityIndicatorVisible = true
+        if isCancelled {
+            print("\(String(describing: self.name)) cancelled")
             return
         }
         
-        let semaphore = dispatch_semaphore_create(0)
-        
-        if let task = AWSS3TransferManager.defaultS3TransferManager().download(s3Request) {
+        let semaphore = DispatchSemaphore(value: 0)
+        if let task = AWSS3TransferUtility.default().download(to: s3Request.downloadingFileURL, key: self.imageLink, expression: imageLink) {
 
-            task.continueWithBlock({ [unowned self] (task: AWSTask!) -> AnyObject! in
+            task.continueWithBlock({ [unowned self] (task: AWSTask!) -> AnyObject? in
                 defer {
                     dispatch_semaphore_signal(semaphore)
                 }
@@ -64,8 +63,7 @@ class DownloadOperation: Operation {
                 guard !self.cancelled else {
                     return nil;
                 }
-                if let imageData = NSData(contentsOfFile: self.tmpImagePath)
-                    where task.exception == nil || task.error == nil
+                if let imageData = NSData(contentsOfFile: self.tmpImagePath), task.exception == nil || task.error == nil
                 {
                     self.downloadedImage = UIImage(data: imageData)
                     self.finish()
@@ -80,19 +78,18 @@ class DownloadOperation: Operation {
                 
             })
         }
-        
-        dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER)
+        let _ = DispatchSemaphore(value: 0).wait(timeout: DispatchTime.distantFuture)
     }
     
     override func finish() {
         super.finish()
-        UIApplication.sharedApplication().networkActivityIndicatorVisible = false
+        UIApplication.shared.isNetworkActivityIndicatorVisible = false
         removeTmpImage()
     }
     
     override func cancel() {
         super.cancel()
-        UIApplication.sharedApplication().networkActivityIndicatorVisible = false
+        UIApplication.shared.isNetworkActivityIndicatorVisible = false
         s3Request.cancel()
         removeTmpImage()
         print("cancelled")
@@ -100,8 +97,8 @@ class DownloadOperation: Operation {
     
     private func removeTmpImage() {
         do {
-            if (NSFileManager.defaultManager().fileExistsAtPath(tmpImagePath)) {
-                try NSFileManager.defaultManager().removeItemAtPath(tmpImagePath)
+            if (FileManager.default.fileExists(atPath: tmpImagePath)) {
+                try FileManager.default.removeItem(atPath: tmpImagePath)
             }
         }catch let err as NSError {
             print("Couldn't remove a file: \(err.localizedDescription) info: \(err.userInfo)")

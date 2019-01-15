@@ -9,7 +9,8 @@
 typealias progressBlock = (Int8) -> ()
 typealias operationBlock = () -> ()
 
-class Operation: NSOperation {
+class OperationWrapper: Operation {
+    
     enum State: String {
         case Ready = "isReady"
         case Executing = "isExecuting"
@@ -20,36 +21,36 @@ class Operation: NSOperation {
     // MARK: - Properties
     var state = State.Ready {
         willSet {
-            willChangeValueForKey(newValue.rawValue)
-            willChangeValueForKey(self.state.rawValue)
+            willChangeValue(forKey: newValue.rawValue)
+            willChangeValue(forKey: self.state.rawValue)
         }
         didSet {
-            didChangeValueForKey(oldValue.rawValue)
-            didChangeValueForKey(self.state.rawValue)
+            willChangeValue(forKey: oldValue.rawValue)
+            willChangeValue(forKey: self.state.rawValue)
         }
     }
     
-    var cancellationBlock = operationBlock?()
+    var cancellationBlock = operationBlock?(nilLiteral: ())
     
     // MARK: - NSOperation
-    override var ready: Bool {
-        return super.ready && state == .Ready
+    override var isReady: Bool {
+        return super.isReady && state == .Ready
     }
     
-    override var executing: Bool {
+    override var isExecuting: Bool {
         return state == .Executing
     }
     
-    override var finished: Bool {
+    override var isFinished: Bool {
         return state == .Finished
     }
     
-    override var asynchronous: Bool {
+    override var isAsynchronous: Bool {
         return true
     }
     
     override func start() {
-        if self.cancelled {
+        if self.isCancelled {
             state = .Finished
         }else {
             self.main()
