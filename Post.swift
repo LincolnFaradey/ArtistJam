@@ -37,18 +37,17 @@ class Post: NSManagedObject, Codable {
     
     @NSManaged var username: String
     
-    @NSManaged var name: String
-    
     @NSManaged var about: String?
-    
-    @NSManaged var imageURL: String?
     
     // MARK: - Decodable
     required convenience init(from decoder: Decoder) throws {
-        guard let codingUserInfoKeyManagedObjectContext = decoder.userInfo[CodingUserInfoKey],
-            let managedObjectContext = decoder.userInfo[codingUserInfoKeyManagedObjectContext] as? NSManagedObjectContext,
-            let entity = NSEntityDescription.entity(forEntityName: "User", in: managedObjectContext) else {
-                fatalError("Failed to decode User")
+        guard let infoKey = CodingUserInfoKey.init(rawValue: "Post") else {
+            fatalError("No CodingUserInfoKey 'Post' found")
+        }
+        guard let codingUserInfoKeyManagedObjectContext = decoder.userInfo[infoKey],
+            let managedObjectContext = codingUserInfoKeyManagedObjectContext as? NSManagedObjectContext,
+            let entity = NSEntityDescription.entity(forEntityName: "Post", in: managedObjectContext) else {
+                fatalError("Failed to decode Post")
         }
         
         self.init(entity: entity, insertInto: managedObjectContext)
@@ -56,16 +55,18 @@ class Post: NSManagedObject, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decodeIfPresent(String.self, forKey: .id)!
         self.username = try container.decodeIfPresent(String.self, forKey: .username)!
-        self.name = try container.decodeIfPresent(String.self, forKey: .name)!
-        self.about = try container.decodeIfPresent(String.self, forKey: .about)!
-        self.imageLink = try container.decodeIfPresent(String.self, forKey: .about)!
+        self.title = try container.decodeIfPresent(String.self, forKey: .title)!
+        self.details = try container.decodeIfPresent(String.self, forKey: .details)!
+        self.imageLink = try container.decodeIfPresent(String.self, forKey: .imageLink)!
     }
     
     // MARK: - Encodable
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(avatarUrl, forKey: .avatarUrl)
+        try container.encode(id, forKey: .id)
         try container.encode(username, forKey: .username)
-        try container.encode(role, forKey: .role)
+        try container.encode(details, forKey: .details)
+        try container.encode(title, forKey: .title)
+        try container.encode(imageLink, forKey: .imageLink)
     }
 }

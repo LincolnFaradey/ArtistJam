@@ -22,9 +22,9 @@ class StageLoaderOpertion: OperationWrapper {
             let today = Date()
             switch self {
             case .Today:
-                return NSPredicate(format: "date < %@ and date > %@", today + 1.day, today - 1.day)
+                return NSPredicate(format: "date < %@ and date > %@", (today + 1.day) as NSDate, (today - 1.day) as NSDate)
             case .Coming:
-                return NSPredicate(format: "date >= %@", today + 1.day)
+                return NSPredicate(format: "date >= %@", (today + 1.day) as NSDate)
             case .New:
                 return NSPredicate(value: true)
             }

@@ -117,19 +117,19 @@ extension String {
 }
 
 extension Int{
-    var hour: (Int, NSCalendar.Unit) {
-        return (self, NSCalendar.Unit.hour)
+    var hour: (Int, Calendar.Component) {
+        return (self, Calendar.Component.hour)
     }
     
-    var day: (Int, NSCalendar.Unit) {
-        return (self, NSCalendar.Unit.day)
+    var day: (Int, Calendar.Component) {
+        return (self, Calendar.Component.day)
     }
     
-    var month: (Int, NSCalendar.Unit) {
-        return (self, NSCalendar.Unit.month)
+    var month: (Int, Calendar.Component) {
+        return (self, Calendar.Component.month)
     }
     
-    var year: (Int, NSCalendar.Unit) {
-        return (self, NSCalendar.Unit.year)
+    var year: (Int, Calendar.Component) {
+        return (self, Calendar.Component.year)
     }
 }

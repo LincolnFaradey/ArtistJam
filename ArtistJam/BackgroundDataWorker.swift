@@ -28,6 +28,35 @@ class BackgroundDataWorker {
         self.privateContext.parent = coreDataStack.context
     }
     
+    func save(post: Post, type: PostType) -> Post? {
+        var newPost: Post?
+        privateContext.performAndWait { [unowned self] in
+            let _ = self.findOrCreate(artistWith: post.artist!.username!)
+            
+            newPost = (type == .Event) ? self.findOrCreate(postWith: post.title!, type: .Event)
+                : self.findOrCreate(postWith: post.title!, type: .News)
+            
+            guard let post = newPost else {
+                print("Couldn't create post")
+                return
+            }
+            
+            if type == .Event {
+                let event = post as! Event
+                event.latitude = event.latitude ?? 0
+                event.longitude = event.longitude ?? 0
+//                event.date = self.dateFormatter.date(from: json["when"] as! String)! as NSDate
+                event.date = Date()
+            }else {
+                let news = post as! News
+                news.likes = news.likes ?? 0
+                news.liked = news.liked ?? 0
+            }
+        }
+        
+        return newPost
+    }
+    
     func save(json: NSDictionary, type: PostType) -> Post? {
         let id = json["id"] as? NSNumber
         let username = json["username"] as! String
@@ -37,10 +66,10 @@ class BackgroundDataWorker {
         
         var newPost: Post?
         privateContext.performAndWait { [unowned self] in
-            let artist = self.findOrCreateArtist(username: username)
+            let artist = self.findOrCreate(artistWith: username)
             
-            newPost = (type == .Event) ? self.findOrCreatePostWith(title: title, type: .Event)
-                : self.findOrCreatePostWith(title: title, type: .News)
+            newPost = (type == .Event) ? self.findOrCreate(postWith: title, type: .Event)
+                : self.findOrCreate(postWith: title, type: .News)
             
             guard let post = newPost else {
                 print("Couldn't create post")
@@ -57,7 +86,7 @@ class BackgroundDataWorker {
                 let event = post as! Event
                 event.latitude = json["lat"] as? NSNumber ?? 0
                 event.longitude = json["long"] as? NSNumber ?? 0
-                event.date = self.dateFormatter.date(from: json["when"] as! String)! as NSDate
+                event.date = self.dateFormatter.date(from: json["when"] as! String)!
             }else {
                 let news = post as! News
                 news.likes = json["likes"] as? NSNumber ?? 0
@@ -88,7 +117,7 @@ class BackgroundDataWorker {
         }
     }
     
-    func findOrCreatePostWith(title: String, type: PostType) -> Post {
+    func findOrCreate(postWith title: String, type: PostType) -> Post {
         let entityDescription = NSEntityDescription.entity(forEntityName: type.rawValue, in: privateContext)
         let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: type.rawValue)
         fetchRequest.predicate = NSPredicate(format: "title == %@", title)
@@ -110,7 +139,7 @@ class BackgroundDataWorker {
         return fetchResult.first as! Post
     }
     
-    func findOrCreateArtist(username: String) -> Artist! {
+    func findOrCreate(artistWith username: String) -> Artist! {
         let artistEntity = NSEntityDescription.entity(forEntityName: "Artist", in: privateContext)
         let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: "Artist")
         fetchRequest.predicate = NSPredicate(format: "username == %@", username)

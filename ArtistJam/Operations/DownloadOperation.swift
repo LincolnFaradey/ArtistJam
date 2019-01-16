@@ -53,31 +53,27 @@ class DownloadOperation: OperationWrapper {
         }
         
         let semaphore = DispatchSemaphore(value: 0)
-        if let task = AWSS3TransferUtility.default().download(to: s3Request.downloadingFileURL, key: self.imageLink, expression: imageLink) {
-
-            task.continueWithBlock({ [unowned self] (task: AWSTask!) -> AnyObject? in
-                defer {
-                    dispatch_semaphore_signal(semaphore)
-                }
-                
-                guard !self.cancelled else {
-                    return nil;
-                }
-                if let imageData = NSData(contentsOfFile: self.tmpImagePath), task.exception == nil || task.error == nil
-                {
-                    self.downloadedImage = UIImage(data: imageData)
-                    self.finish()
-                    
-                    return nil
-                } else {
-                    print("Task exception - \(task.exception)\nTask error - \(task.error)")
-                    self.cancel()
-                    
-                    return nil;
-                }
-                
-            })
-        }
+        let expr = AWSS3TransferUtilityDownloadExpression.init()
+        
+        let clause = { (task: AWSS3TransferUtilityDownloadTask, url: URL?, data: Data?, error: Error?) in
+            defer {
+                semaphore.signal()
+            }
+            
+            guard self.isCancelled && error == nil else {
+                print("Task error - \(String(describing: error))")
+                self.cancel()
+                return
+            }
+            
+            let imageData = try Data(contentsOf: URL(fileURLWithPath: self.tmpImagePath))
+            self.downloadedImage = UIImage(data: imageData)
+            self.finish()
+        } as? AWSS3TransferUtilityDownloadCompletionHandlerBlock
+        
+        AWSS3TransferUtility.default()
+            .download(to: s3Request.downloadingFileURL, key: self.imageLink, expression: expr, completionHandler: clause)
+        
         let _ = DispatchSemaphore(value: 0).wait(timeout: DispatchTime.distantFuture)
     }
     

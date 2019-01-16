@@ -23,23 +23,27 @@ class NewsLoaderOperatrion: OperationWrapper {
             
             do {
                 let decoder = JSONDecoder()
-                let news = try! decoder.decode([News].self, from: data)
-                
-                let json = try JSONSerialization.jsonObject(with: data, options: JSONSerialization.ReadingOptions.allowFragments)
+                let news = try decoder.decode([News].self, from: data)
                 let dataWorker = BackgroundDataWorker.sharedManager
-                
-                if let news = json["news"] as? [NSDictionary] {
-                    print("JSON - \(json)")
-                    for dictionary in news {
-                        dataWorker.save(dictionary, type: .News)
-                    }
-                    dataWorker.saveContext()
+                for n in news {
+                    let _ = dataWorker.save(post: n, type: .News)
                 }
+                dataWorker.saveContext()
+//                let json = try JSONSerialization.jsonObject(with: data, options: JSONSerialization.ReadingOptions.allowFragments) as? [Dictionary<String, Any>]
+//                let dataWorker = BackgroundDataWorker.sharedManager
+//
+//                if let news = json?["news"] {
+//                    print("JSON - \(String(describing: json))")
+//                    for dictionary in news {
+//                        dataWorker.save(dictionary, type: .News)
+//                    }
+//                    dataWorker.saveContext()
+//                }
                 self.finish()
 
                 dataWorker.privateContext.reset()
-            } catch let error as NSError {
-                print("Error occured with JSON serialization: \n \(error.userInfo)")
+            } catch let error {
+                print("Error occured with JSON serialization: \n \(String(describing: error._userInfo))")
                 self.finish()
             }
         })
